@@ -42,11 +42,8 @@
     "@fortawesome/free-solid-svg-icons": "^6.5.2",
     "@triplit/client": "^0.3.53",
     "@xstate/svelte": "^3.0.3",
-    "drizzle-orm": "^0.31.0",
     "highlight.js": "11.9.0",
-    "msw": "^2.3.0",
     "svelte-fa": "^4.0.2",
-    "wa-sqlite": "https://github.com/rhashimoto/wa-sqlite/archive/refs/tags/v0.9.13.tar.gz",
     "xstate": "^5.13.0"
   }
 }
