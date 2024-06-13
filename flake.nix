@@ -14,7 +14,7 @@
       pname = "cryptaa-server";
       version = "1.0.0";
       src = fetchGit {
-        url = "github:thanhnguyen2187/cryptaa.git";
+        url = "https://github.com/thanhnguyen2187/cryptaa";
         rev = "9a3c8b395246960be070217ff3aeb32d65fba5c1";
       };
     };
