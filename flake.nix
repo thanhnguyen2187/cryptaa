@@ -16,7 +16,7 @@
       src = ./.;
       npmDepsHash = "sha256-CqTItezUEQ+YHMCiGVWovqm5ZZIDIQ4+9cWS1W5D0kk=";
       dontNpmBuild = false;
-      installPhase = "npm install";
+      npmInstallFlags = "--include=dev";
     };
   };
-}
+nsta}
