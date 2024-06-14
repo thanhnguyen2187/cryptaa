@@ -2,7 +2,7 @@
 import { CodeBlock } from "@skeletonlabs/skeleton";
 import { Fa } from "svelte-fa";
 import {
-  faArrowsUpDown,
+  faArrowsUpDown, faCopy,
   faKey,
   faLock,
   faNoteSticky,
@@ -10,6 +10,7 @@ import {
 import { machine } from "$lib/machine-secret-ground";
 import { useMachine } from "@xstate/svelte";
 import { getToastStore } from "@skeletonlabs/skeleton";
+import { copyToClipboard } from '$lib/clipboard';
 
 const toastStore = getToastStore();
 
@@ -29,6 +30,34 @@ function encrypt() {
 function swap() {
   send({ type: "SwapMode" });
 }
+async function copy() {
+  if ($snapshot.context.textTarget === "") {
+    toastStore.trigger({
+      message: "No content to copy!",
+      background: "bg-warning-800",
+      hideDismiss: true,
+      timeout: 2000,
+    });
+    return
+  }
+  const result = await copyToClipboard($snapshot.context.textTarget);
+  if (result === 'success') {
+    toastStore.trigger({
+      message: "Copied content to clipboard!",
+      background: "bg-success-800",
+      hideDismiss: true,
+      timeout: 2000,
+    });
+  } else {
+    toastStore.trigger({
+      message: "Could not copy to clipboard!",
+      background: "bg-error-700",
+      hideDismiss: true,
+      timeout: 2000,
+    });
+  }
+}
+
 </script>
 
 <div class="container mt-4 mx-auto flex flex-col justify-center items-center">
@@ -80,6 +109,12 @@ function swap() {
         on:click={swap}
       >
         <Fa icon={faArrowsUpDown}/>
+      </button>
+      <button
+        class="btn btn-icon variant-soft-secondary"
+        on:click={copy}
+      >
+        <Fa icon={faCopy}/>
       </button>
     </div>
 
