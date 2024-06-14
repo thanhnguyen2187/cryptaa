@@ -21,7 +21,6 @@
     "@sveltejs/vite-plugin-svelte": "^3.0.0",
     "@tailwindcss/forms": "0.5.7",
     "@tailwindcss/typography": "0.5.13",
-    "@triplit/cli": "^0.3.66",
     "@types/node": "20.12.13",
     "autoprefixer": "10.4.19",
     "globals": "^15.0.0",
@@ -37,6 +36,7 @@
   },
   "type": "module",
   "dependencies": {
+    "@triplit/cli": "^0.3.66",
     "@floating-ui/dom": "1.6.5",
     "@formkit/auto-animate": "^0.8.2",
     "@fortawesome/free-brands-svg-icons": "^6.5.2",
