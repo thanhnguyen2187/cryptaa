@@ -19,4 +19,4 @@
       npmInstallFlags = "--include=dev";
     };
   };
-nsta}
+}
