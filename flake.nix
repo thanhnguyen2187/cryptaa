@@ -14,6 +14,7 @@
       pname = "cryptaa-server";
       version = "1.0.0";
       src = ./.;
+      npmDepsHash = "sha256-CqTItezUEQ+YHMCiGVWovqm5ZZIDIQ4+9cWS1W5D0kk=";
     };
   };
 }
