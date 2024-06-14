@@ -151,8 +151,9 @@ const miscText = `
             {/if}
           </div>
         {:else if $tabActivated === "miscellanies"}
-          <div class="grow">
+          <div>
             <pre class="whitespace-pre-wrap">{miscText}</pre>
+            <pre class="whitespace-pre-wrap">- <a href="./secret-ground" class="underline">Secret ground</a></pre>
           </div>
         {/if}
       </div>

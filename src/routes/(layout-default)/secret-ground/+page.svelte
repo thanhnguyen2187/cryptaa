@@ -2,7 +2,9 @@
 import { CodeBlock } from "@skeletonlabs/skeleton";
 import { Fa } from "svelte-fa";
 import {
-  faArrowsUpDown, faCopy,
+  faArrowLeft,
+  faArrowRotateBack,
+  faArrowsUpDown, faBackward, faCopy, faHistory,
   faKey,
   faLock,
   faNoteSticky,
@@ -116,6 +118,12 @@ async function copy() {
       >
         <Fa icon={faCopy}/>
       </button>
+      <a
+        class="btn btn-icon variant-soft-secondary"
+        href="/"
+      >
+        <Fa icon={faArrowLeft}/>
+      </a>
     </div>
 
   </div>
