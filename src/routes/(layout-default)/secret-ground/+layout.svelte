@@ -26,5 +26,7 @@ storePopup.set({ computePosition, autoUpdate, flip, shift, offset, arrow });
 </script>
 
 <Toast/>
-<slot />
+<AppShell>
+	<slot />
+</AppShell>
 

@@ -60,7 +60,7 @@ async function copy() {
 
 </script>
 
-<div class="container mt-4 mx-auto flex flex-col justify-center items-center">
+<div class="container m-4 mx-auto flex flex-col justify-center items-center">
   <div class="card p-4 w-full sm:w-80 flex flex-col gap-4">
     <label class="label">
       {#if $snapshot.context.mode === "encryption"}
