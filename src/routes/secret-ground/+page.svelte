@@ -32,8 +32,6 @@ function swap() {
 </script>
 
 <div class="container mt-4 mx-auto flex flex-col justify-center items-center">
-  <span>{JSON.stringify($snapshot.context)}</span>
-  <span>{JSON.stringify($snapshot.value)}</span>
   <div class="card p-4 w-full sm:w-80 flex flex-col gap-4">
     <label class="label">
       {#if $snapshot.context.mode === "encryption"}
