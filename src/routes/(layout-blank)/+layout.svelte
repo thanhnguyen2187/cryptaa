@@ -1,5 +1,5 @@
 <script lang="ts">
-import "../app.postcss";
+import "../../app.postcss";
 import autoAnimate from "@formkit/auto-animate";
 import {
 	AppShell,
@@ -21,7 +21,7 @@ import {
 } from "@floating-ui/dom";
 import { globalActorApp, globalClient } from '$lib/global';
 import { useSelector } from '@xstate/svelte';
-import { noteCount, notesRead } from '../data/queries-triplit';
+import { noteCount, notesRead } from '../../data/queries-triplit';
 import { derived } from 'svelte/store';
 
 // Highlight JS

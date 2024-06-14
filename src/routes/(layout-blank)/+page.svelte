@@ -10,21 +10,21 @@ import {
 } from "@skeletonlabs/skeleton";
 import { useSelector } from "@xstate/svelte";
 import { Fa } from "svelte-fa";
-import ModalNote from "../components/ModalNote.svelte";
-import ModalEncryption from "../components/ModalEncryption.svelte";
-import ModalSettings_ from "../components/ModalSettings.svelte";
-import NotesList from "../components/NotesList.svelte";
+import ModalNote from "../../components/ModalNote.svelte";
+import ModalEncryption from "../../components/ModalEncryption.svelte";
+import ModalSettings_ from "../../components/ModalSettings.svelte";
+import NotesList from "../../components/NotesList.svelte";
 import {
   createEmptyNoteDisplay,
   encryptNote,
-} from "../data/data-transformation";
+} from "../../data/data-transformation";
 import {
   noteCount,
   notesDelete,
   notesRead,
   notesUpsert,
-} from "../data/queries-triplit";
-import type { NoteDisplay } from "../data/schema-triplit";
+} from "../../data/queries-triplit";
+import type { NoteDisplay } from "../../data/schema-triplit";
 
 const modalStore = getModalStore();
 const toastStore = getToastStore();
