@@ -131,27 +131,30 @@ export const machine = setup({
             context.toastStore.trigger({
               message: "Text should not be empty!",
               timeout: 2000,
+              hideDismiss: true,
             });
           },
-          always: "TransientEnd",
+          always: "#MachineSecretGround.Idling",
         },
         PasswordEmpty: {
           entry: ({ context }) => {
             context.toastStore.trigger({
               message: "Password should not be empty!",
               timeout: 2000,
+              hideDismiss: true,
             });
           },
-          always: "TransientEnd",
+          always: "#MachineSecretGround.Idling",
         },
         BothEmpty: {
           entry: ({ context }) => {
             context.toastStore.trigger({
               message: "Inputs should not be empty!",
               timeout: 2000,
+              hideDismiss: true,
             });
           },
-          always: "TransientEnd",
+          always: "#MachineSecretGround.Idling",
         },
         TransientEnd: {
           always: "#MachineSecretGround.Functioning",
@@ -231,6 +234,7 @@ export const machine = setup({
             context.toastStore.trigger({
               message: "Please recheck your password!",
               timeout: 2000,
+              hideDismiss: true,
             });
           },
           always: "TransientEnd",
@@ -240,6 +244,7 @@ export const machine = setup({
             context.toastStore.trigger({
               message: "Please recheck your text's content or format!",
               timeout: 2000,
+              hideDismiss: true,
             });
           },
           always: "TransientEnd",
@@ -249,6 +254,7 @@ export const machine = setup({
             context.toastStore.trigger({
               message: "Unknown error happened",
               timeout: 2000,
+              hideDismiss: true,
             });
           },
           always: "TransientEnd",
