@@ -10,6 +10,7 @@ import { formatDate } from '$lib/date';
 export let parent: unknown;
 export let note: NoteDisplay;
 export let fnSubmit: () => void;
+export let fnEncryptAndSave: () => void;
 export let fnCancel: () => void;
 </script>
 
@@ -73,13 +74,20 @@ export let fnCancel: () => void;
       />
     </label>
   </section>
-  <footer class="card-footer flex flex-row-reverse">
+  <footer class="card-footer flex flex-row-reverse gap-2">
     <button
       class="btn variant-filled"
       on:click={fnSubmit}
       disabled={note.encrypted}
     >
       Save
+    </button>
+    <button
+      class="btn variant-soft-secondary"
+      on:click={fnEncryptAndSave}
+      disabled={note.encrypted}
+    >
+      Encrypt & Save
     </button>
   </footer>
 </div>

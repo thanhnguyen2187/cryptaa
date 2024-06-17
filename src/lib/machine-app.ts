@@ -7,6 +7,7 @@ export const machine = setup({
     context: {} as {
       notes: NoteDisplay[];
       note: NoteDisplay;
+      noteEncrypting: boolean;
       limit: number;
       notesTotalCount: number;
       searchTags: Set<string>;
@@ -47,6 +48,7 @@ export const machine = setup({
   context: {
     notes: [],
     note: createEmptyNoteDisplay(),
+    noteEncrypting: false,
     notesTotalCount: 0,
     limit: 10,
     searchTags: new Set(),

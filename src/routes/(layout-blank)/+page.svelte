@@ -78,6 +78,12 @@ function fnModalOpenNoteCreate() {
           modalStore.close();
           await itemsLoad();
         },
+        fnEncryptAndSave: async () => {
+          appSend({ type: "ModalCancel" });
+          modalStore.close();
+          appSend({ type: "ModalOpenEncryption", note });
+          fnModalEncryption(note)
+        },
       },
     },
     response: () => appSend({ type: "ModalCancel" }),
@@ -98,6 +104,12 @@ function fnModalOpenNoteUpdate(note: NoteDisplay) {
           appSend({ type: "Reload" });
           modalStore.close();
           await itemsLoad();
+        },
+        fnEncryptAndSave: async () => {
+          appSend({ type: "ModalCancel" });
+          modalStore.close();
+          appSend({ type: "ModalOpenEncryption", note });
+          fnModalEncryption(note)
         },
       },
     },

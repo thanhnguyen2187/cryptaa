@@ -1,9 +1,6 @@
 <script lang="ts">
 import { faClose } from "@fortawesome/free-solid-svg-icons";
-import { InputChip } from "@skeletonlabs/skeleton";
 import { Fa } from "svelte-fa";
-import type { NoteDisplay } from "../data/schema-triplit";
-import { formatDate } from '$lib/date';
 
 // Use this to "receive" Skeleton's prop passing to this component. In case we
 // don't, a harmless warning would be raised.
