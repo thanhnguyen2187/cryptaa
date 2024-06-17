@@ -59,7 +59,6 @@ async function copy() {
     });
   }
 }
-
 </script>
 
 <div class="container m-4 mx-auto flex flex-col justify-center items-center">
