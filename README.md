@@ -14,13 +14,18 @@ scratch here to explore some better ideas.
 <details>
 <summary>Screenshots</summary>
 
-- Desktop version:
+---
+
+Desktop version:
 
 ![](./imgs/1.png)
 
-- Mobile version:
+Mobile version:
 
 ![](./imgs/2.png)
+
+---
+
 </details>
 
 ## Motivations and Features
@@ -42,10 +47,8 @@ For a note-taking application, I wanted these attributes:
 
 It surprised me that I couldn't find anything that checkes all of the boxes.
 Some check more than the others, but in the end, all of them are inaquadate and
-served as the inspiration for Cryptaa.
-
-<small>Or NIH syndrome kicked in, and I wanted to use that chance to polish my
-skills/play around with new technologies.</small>
+served as the inspiration for Cryptaa. <sup>Or NIH syndrome kicked in, and I wanted to use that chance to polish my
+skills/play around with new technologies.</sup>
 
 ## How It Works
 
