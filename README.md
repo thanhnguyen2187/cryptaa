@@ -13,6 +13,7 @@ scratch here to explore some better ideas.
 
 <details>
 <summary>Screenshots</summary>
+
 - Desktop version:
 
 ![](./imgs/1.png)
