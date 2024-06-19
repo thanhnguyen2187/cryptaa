@@ -6,9 +6,8 @@ import {
   faArrowRotateRight,
   faChevronDown,
 } from "@fortawesome/free-solid-svg-icons";
-import { noteCount, notesRead } from '../data/queries-triplit';
-import { globalAppActor, globalClient } from '$lib/global';
-import { useSelector } from '@xstate/svelte';
+import { globalAppActor } from "$lib/global";
+import { useSelector } from "@xstate/svelte";
 
 export let notes: NoteDisplay[] = [];
 export let fnUpdate: (note: NoteDisplay) => void;
@@ -16,43 +15,20 @@ export let fnEncrypt: (note: NoteDisplay) => void;
 export let fnDelete: (noteId: string) => void;
 export let fnTagAdd: (tag: string) => void;
 
-const currentState = useSelector(globalAppActor, (state) => state);
-const appSend = globalAppActor.send;
-const tags = useSelector(globalAppActor, (state) => state.context.searchTags);
-
-async function itemsLoad() {
-  try {
-    const notes = await notesRead(
-      globalClient,
-      $currentState.context.limit,
-      $currentState.context.keyword,
-      $tags,
-    );
-    const count = await noteCount(
-      globalClient,
-      $currentState.context.keyword,
-      $tags,
-    );
-    appSend({ type: "Loaded", notes, totalCount: count });
-  } catch (e) {
-    appSend({ type: "FailedData" });
-    console.error(e);
-  }
-}
-
-function increaseLimit() {
-  const limit = $currentState.context.limit;
-  const limitIncreased = limit + 10;
-  appSend({type: "LimitSet", limit: limitIncreased});
-  itemsLoad();
-}
-
 function reload() {
-  appSend({type: "LimitSet", limit: 10});
-  itemsLoad();
+  globalAppActor.send({ type: "Reload" });
 }
 
-const showAddMore = useSelector(globalAppActor, (state) => state.context.limit < state.context.notesTotalCount);
+function loadMore() {
+  const limit = globalAppActor.getSnapshot().context.limit;
+  globalAppActor.send({ type: "SetLimit", value: limit + 10 });
+  globalAppActor.send({ type: "Reload" });
+}
+
+const showAddMore = useSelector(
+  globalAppActor,
+  (state) => state.context.limit < state.context.notesTotalCount,
+);
 </script>
 
 <div class="flex flex-col gap-2">
@@ -68,18 +44,18 @@ const showAddMore = useSelector(globalAppActor, (state) => state.context.limit <
   <div class="flex flex-row-reverse gap-2">
     <button
       class="btn variant-ghost-secondary"
-      on:click={increaseLimit}
-      class:hidden={!$showAddMore}
-    >
-      <Fa icon={faChevronDown} class=""></Fa>
-      <span>More</span>
-    </button>
-    <button
-      class="btn variant-ghost-secondary"
       on:click={reload}
     >
       <Fa icon={faArrowRotateRight} class=""></Fa>
       <span>Reload</span>
+    </button>
+    <button
+      class="btn variant-ghost-secondary"
+      on:click={loadMore}
+      class:hidden={!$showAddMore}
+    >
+      <Fa icon={faChevronDown} class=""></Fa>
+      <span>More</span>
     </button>
   </div>
 </div>

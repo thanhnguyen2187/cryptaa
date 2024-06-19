@@ -5,7 +5,7 @@ import {
   encryptNote,
 } from "../data/data-transformation";
 import type { TriplitClient } from "@triplit/client";
-import { notesRead, notesUpsert } from "../data/queries-triplit";
+import { noteCount, notesRead, notesUpsert } from "../data/queries-triplit";
 import type { ToastManager } from "$lib/toast-manager";
 import { registerServiceWorker } from "$lib/sw-registration";
 import type { ModalManager } from "$lib/modal-manager";
@@ -24,6 +24,20 @@ export const logicNotesRead = fromPromise(
     };
   }) => {
     return notesRead(input.client, input.limit, input.keyword, input.tags);
+  },
+);
+
+export const logicNotesCount = fromPromise(
+  async ({
+    input,
+  }: {
+    input: {
+      client: TriplitClient;
+      keyword: string;
+      tags: Set<string>;
+    };
+  }) => {
+    return noteCount(input.client, input.keyword, input.tags);
   },
 );
 
@@ -88,8 +102,10 @@ export const machine = setup({
       | { type: "SetToastManager"; value: ToastManager }
       | { type: "SetModalStore"; value: ModalStore }
       | { type: "SetNote"; value: NoteDisplay }
+      | { type: "SetLimit"; value: number }
       | { type: "Save"; note: NoteDisplay }
       | { type: "Submit"; password: string }
+      | { type: "Reload" }
       | { type: "ModalOpenNoteNew" }
       | { type: "ModalClosed" }
       | { type: "Check" }
@@ -107,7 +123,6 @@ export const machine = setup({
       | { type: "Retried" }
       | { type: "Error" }
       | { type: "Loaded"; notes: NoteDisplay[]; totalCount: number }
-      | { type: "Reload" }
       | { type: "SearchTagAdd"; tag: string }
       | { type: "SearchTagRemove"; tag: string }
       | { type: "SearchKeywordSet"; keyword: string }
@@ -157,6 +172,11 @@ export const machine = setup({
         modalStore: ({ event }) => event.value,
       }),
     },
+    SetLimit: {
+      actions: assign({
+        limit: ({ event }) => event.value,
+      }),
+    },
   },
   states: {
     ServiceWorkerInitializing: {
@@ -175,28 +195,73 @@ export const machine = setup({
       },
     },
     DataLoading: {
-      invoke: {
-        src: logicNotesRead,
-        input: ({ context }) => ({
-          client: context.client,
-          limit: context.limit,
-          keyword: context.keyword,
-          tags: context.tags,
-        }),
-        onDone: {
-          target: "Idling",
-          actions: assign({
-            notes: ({ event }) => event.output as NoteDisplay[],
-          }),
+      type: "parallel",
+      states: {
+        Records: {
+          initial: "Loading",
+          states: {
+            Loading: {
+              invoke: {
+                src: logicNotesRead,
+                input: ({ context }) => ({
+                  client: context.client,
+                  limit: context.limit,
+                  keyword: context.keyword,
+                  tags: context.tags,
+                }),
+                onDone: {
+                  target: "Loaded",
+                  actions: assign({
+                    notes: ({ event }) => event.output as NoteDisplay[],
+                  }),
+                },
+                onError: {
+                  target: "#App.DataError",
+                  actions: ({ context, event }) => {
+                    context.toastManager.error("Error happened fetching data");
+                    console.error(event.error);
+                  },
+                },
+              },
+            },
+            Loaded: {
+              type: "final",
+            },
+          }
         },
-        onError: {
-          target: "Idling",
-          actions: ({ context, event }) => {
-            context.toastManager.error("Error happened fetching data");
-            console.error(event.error);
+        Count: {
+          initial: "Loading",
+          states: {
+            Loading: {
+              invoke: {
+                src: logicNotesCount,
+                input: ({ context }) => ({
+                  client: context.client,
+                  keyword: context.keyword,
+                  tags: context.tags,
+                }),
+                onDone: {
+                  target: "Loaded",
+                  actions: assign({
+                    notesTotalCount: ({ event }) => event.output as number,
+                  }),
+                },
+                onError: {
+                  target: "#App.DataError",
+                  actions: ({ context, event }) => {
+                    context.toastManager.error("Error happened fetching data");
+                    console.error(event.error);
+                  },
+                },
+              },
+            },
+            Loaded: {
+              type: "final"
+            },
           },
         },
       },
+      onDone: "Idling",
     },
     DataUpserting: {
       invoke: {
@@ -249,6 +314,9 @@ export const machine = setup({
           actions: assign({
             note: createEmptyNoteDisplay(),
           }),
+        },
+        Reload: {
+          target: "DataLoading",
         },
       },
       states: {
