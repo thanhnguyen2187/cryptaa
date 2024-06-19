@@ -6,6 +6,14 @@ export type Toast = {
   error(message: string): void;
 };
 
+export function createToastDummy(): Toast {
+  return {
+    warn(message: string) {},
+    success(message: string) {},
+    error(message: string) {},
+  }
+}
+
 export function createToastSkeleton(toastStore: ToastStore): Toast {
   return {
     warn(message: string) {
