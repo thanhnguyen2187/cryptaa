@@ -7,9 +7,9 @@
 
 Or an offline-first blazing fast & secure note taking application. Check the
 latest development version at: https://cryptaa.pages.dev. Note that the name is
-"Cryptaa", with two 'a's instead of one, as the application has a [first
-version](https://github.com/thanhnguyen2187/crypta). However, I started from
-scratch here to explore some better ideas.
+"Cryptaa", with two 'a's instead of one. The application has a
+[first version](https://github.com/thanhnguyen2187/crypta). However, I started
+from scratch here to explore some better ideas.
 
 <details>
 <summary>Screenshots</summary>
@@ -45,15 +45,16 @@ For a note-taking application, I wanted these attributes:
 - Web version: I don't like installing another application whether it's on my
   phone nor my computer.
 
-It surprised me that I couldn't find anything that checkes all of the boxes.
-Some check more than the others, but in the end, all of them are inaquadate and
-served as the inspiration for Cryptaa. <sup>Or NIH syndrome kicked in, and I wanted to use that chance to polish my
-skills/play around with new technologies.</sup>
+It surprised me that I couldn't find anything that check all the boxes.
+Some check more than the others, but in the end, all of them are inadequate and
+served as the inspiration for Cryptaa. <sup>Or NIH syndrome kicked in, and I
+wanted to use that chance to polish my skills/play around with new
+technologies.</sup>
 
 ## How It Works
 
-Cryptaa uses [Triplit](https://www.triplit.dev/) as the database. Triplit runs
-in your browser (persisting to IndexedDB), and can be run as an independent
+Cryptaa uses [Triplit](https://www.triplit.dev/) as its database. Triplit runs
+in your browser (persisting to IndexedDB), and can be run within an independent
 server (persisting to SQLite) as well.
 
 ```mermaid
@@ -122,6 +123,7 @@ npm run preview
 Or you can move to the folder and try serving it yourself:
 
 ```shell
+# cd build
 python -m http.server
 ```
 
