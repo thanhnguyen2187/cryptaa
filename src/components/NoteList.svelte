@@ -1,5 +1,5 @@
 <script lang="ts">
-import NoteItemList from "./NoteItemList.svelte";
+import Item from "./NoteListItem.svelte";
 import type { NoteDisplay } from "../data/schema-triplit";
 import { Fa } from "svelte-fa";
 import {
@@ -25,12 +25,12 @@ async function itemsLoad() {
     const notes = await notesRead(
       globalClient,
       $currentState.context.limit,
-      $currentState.context.searchKeyword,
+      $currentState.context.keyword,
       $tags,
     );
     const count = await noteCount(
       globalClient,
-      $currentState.context.searchKeyword,
+      $currentState.context.keyword,
       $tags,
     );
     appSend({ type: "Loaded", notes, totalCount: count });
@@ -57,7 +57,7 @@ const showAddMore = useSelector(globalAppActor, (state) => state.context.limit <
 
 <div class="flex flex-col gap-2">
   {#each notes as note(note.id)}
-    <NoteItemList
+    <Item
       {note}
       {fnUpdate}
       {fnEncrypt}

@@ -9,7 +9,7 @@ export async function notesRead(
   keyword: string,
   tags: Set<string>,
 ): Promise<NoteDisplay[]> {
-  let query = client.query("notes").order("createdAt", "ASC").limit(limit);
+  let query = client.query("notes").order("createdAt", "DESC").limit(limit);
   if (keyword !== "") {
     query = query.where(
       or([

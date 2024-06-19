@@ -9,7 +9,7 @@ import { formatDate } from '$lib/date';
 // don't, a harmless warning would be raised.
 export let parent: unknown;
 export let note: NoteDisplay;
-export let fnSubmit: () => void;
+export let fnSave: () => void;
 export let fnEncryptAndSave: () => void;
 export let fnCancel: () => void;
 </script>
@@ -77,7 +77,7 @@ export let fnCancel: () => void;
   <footer class="card-footer flex flex-row-reverse gap-2">
     <button
       class="btn variant-filled"
-      on:click={fnSubmit}
+      on:click={fnSave}
       disabled={note.encrypted}
     >
       Save

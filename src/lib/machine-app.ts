@@ -1,20 +1,97 @@
-import { assign, setup } from "xstate";
+import { assign, fromPromise, setup } from "xstate";
 import type { NoteDisplay } from "../data/schema-triplit";
-import { createEmptyNoteDisplay } from "../data/data-transformation";
+import {
+  createEmptyNoteDisplay,
+  encryptNote,
+} from "../data/data-transformation";
+import type { TriplitClient } from "@triplit/client";
+import { notesRead, notesUpsert } from "../data/queries-triplit";
+import type { ToastManager } from "$lib/toast-manager";
+import { registerServiceWorker } from "$lib/sw-registration";
+import type { ModalManager } from "$lib/modal-manager";
+import { logicModalNote, logicModalPassword } from "$lib/logic-modal";
+import type { Modal, ModalStore } from "@skeletonlabs/skeleton";
+
+export const logicNotesRead = fromPromise(
+  async ({
+    input,
+  }: {
+    input: {
+      client: TriplitClient;
+      limit: number;
+      keyword: string;
+      tags: Set<string>;
+    };
+  }) => {
+    return notesRead(input.client, input.limit, input.keyword, input.tags);
+  },
+);
+
+export const logicNotesUpsert = fromPromise(
+  async ({
+    input,
+  }: {
+    input: {
+      client: TriplitClient;
+      note: NoteDisplay;
+      noteEncrypting: boolean;
+      password: string;
+    };
+  }) => {
+    if (!input.noteEncrypting) {
+      await notesUpsert(input.client, input.note);
+    } else {
+      const encryptedNote = await encryptNote(input.note, input.password);
+      await notesUpsert(input.client, encryptedNote);
+    }
+  },
+);
+
+export const logicNotesEncrypt = fromPromise(
+  async ({
+    input,
+  }: {
+    input: {
+      note: NoteDisplay;
+      password: string;
+    };
+  }) => {
+    return encryptNote(input.note, input.password);
+  },
+);
+
+export const logicRegisterSW = fromPromise(registerServiceWorker);
+
+export type Context = {
+  client: TriplitClient;
+  notes: NoteDisplay[];
+  note: NoteDisplay;
+  noteEncrypting: boolean;
+  password: string;
+  limit: number;
+  notesTotalCount: number;
+  tags: Set<string>;
+  keyword: string;
+  toastManager: ToastManager;
+  modalStore?: ModalStore;
+};
+
+export type Input = {
+  client: TriplitClient;
+  toastManager: ToastManager;
+};
 
 export const machine = setup({
   types: {
-    context: {} as {
-      notes: NoteDisplay[];
-      note: NoteDisplay;
-      noteEncrypting: boolean;
-      limit: number;
-      notesTotalCount: number;
-      searchTags: Set<string>;
-      searchKeyword: string;
-    },
+    context: {} as Context,
     events: {} as
-      | { type: "Save" }
+      | { type: "SetToastManager"; value: ToastManager }
+      | { type: "SetModalStore"; value: ModalStore }
+      | { type: "SetNote"; value: NoteDisplay }
+      | { type: "Save"; note: NoteDisplay }
+      | { type: "Submit"; password: string }
+      | { type: "ModalOpenNoteNew" }
+      | { type: "ModalClosed" }
       | { type: "Check" }
       | { type: "Cancel" }
       | { type: "Failed" }
@@ -39,136 +116,206 @@ export const machine = setup({
       | { type: "ModalOpenEncryption"; note: NoteDisplay }
       | { type: "ModalOpenSettings" }
       | { type: "ModalConfirmDeletion" }
-      | { type: "ModalCancel" },
+      | { type: "ModalCancel" }
+      | { type: "ServiceWorkerInitialized" },
+    input: {} as Input,
   },
   guards: {
     IsNotesEmpty: ({ context }) => context.notes.length === 0,
   },
+  actors: {
+    logicNotesRead,
+    logicNotesUpsert,
+    logicRegisterSW,
+    logicModalNote,
+    logicNotesEncrypt,
+  },
 }).createMachine({
-  context: {
+  context: ({ input }) => ({
     notes: [],
     note: createEmptyNoteDisplay(),
     noteEncrypting: false,
+    password: "",
     notesTotalCount: 0,
     limit: 10,
-    searchTags: new Set(),
-    searchKeyword: "",
+    tags: new Set(),
+    keyword: "",
+    toastManager: input.toastManager,
+    modalStore: undefined,
+    client: input.client,
+  }),
+  id: "App",
+  initial: "ServiceWorkerInitializing",
+  on: {
+    SetToastManager: {
+      actions: assign({
+        toastManager: ({ event }) => event.value,
+      }),
+    },
+    SetModalStore: {
+      actions: assign({
+        modalStore: ({ event }) => event.value,
+      }),
+    },
   },
-  id: "AppState",
-  initial: "Functioning",
   states: {
-    Functioning: {
-      initial: "Loading",
-      on: {
-        FailedData: "DataError",
-      },
-      states: {
-        Loading: {
-          on: {
-            Loaded: {
-              target: "Idling",
-              actions: assign({
-                notes: ({ event }) => event.notes,
-                notesTotalCount: ({ event }) => event.totalCount,
-              }),
-            },
-            Error: "..DataError",
+    ServiceWorkerInitializing: {
+      invoke: {
+        src: logicRegisterSW,
+        onDone: { target: "DataLoading" },
+        onError: {
+          target: "DataLoading",
+          actions: ({ context, event }) => {
+            context.toastManager.warn(
+              "Error happened registering service worker",
+            );
+            console.warn(event.error);
           },
         },
-        Idling: {
-          type: "parallel",
+      },
+    },
+    DataLoading: {
+      invoke: {
+        src: logicNotesRead,
+        input: ({ context }) => ({
+          client: context.client,
+          limit: context.limit,
+          keyword: context.keyword,
+          tags: context.tags,
+        }),
+        onDone: {
+          target: "Idling",
+          actions: assign({
+            notes: ({ event }) => event.output as NoteDisplay[],
+          }),
+        },
+        onError: {
+          target: "Idling",
+          actions: ({ context, event }) => {
+            context.toastManager.error("Error happened fetching data");
+            console.error(event.error);
+          },
+        },
+      },
+    },
+    DataUpserting: {
+      invoke: {
+        src: logicNotesUpsert,
+        input: ({ context }) => ({
+          client: context.client,
+          note: context.note,
+          noteEncrypting: context.noteEncrypting,
+          password: context.password,
+        }),
+        onDone: {
+          target: "DataLoading",
+        },
+        onError: {
+          target: "DataError",
+          actions: ({ context, event }) => {
+            context.toastManager.error("Error happened fetching data");
+            console.error(event.error);
+          },
+        },
+      },
+    },
+    DataEncrypting: {
+      invoke: {
+        src: logicNotesEncrypt,
+        input: ({ context }) => ({
+          note: context.note,
+          password: context.password,
+        }),
+        onDone: {
+          target: "DataUpserting",
+          actions: assign({
+            note: ({ event }) => event.output as NoteDisplay,
+          }),
+        },
+        onError: {
+          target: "DataError",
+          actions: ({ context, event }) => {
+            context.toastManager.error("Error happened encrypting data");
+            console.error(event.error);
+          },
+        },
+      },
+    },
+    Idling: {
+      initial: "Transient",
+      on: {
+        ModalOpenNoteNew: {
+          target: "#App.Modal.Note",
+          actions: assign({
+            note: createEmptyNoteDisplay(),
+          }),
+        },
+      },
+      states: {
+        Transient: {
+          always: [
+            {
+              guard: "IsNotesEmpty",
+              target: "Empty",
+            },
+            {
+              target: "Filled",
+            },
+          ],
+        },
+        Empty: {},
+        Filled: {},
+      },
+    },
+    Modal: {
+      initial: "None",
+      on: {
+        ModalClosed: {
+          target: "Idling",
+        },
+      },
+      states: {
+        None: {},
+        Note: {
           on: {
-            ModalOpenNote: {
-              target: ".Modal.Note",
+            Save: {
               actions: assign({
                 note: ({ event }) => event.note,
+                noteEncrypting: () => false,
               }),
+              target: "#App.DataUpserting",
             },
-            ModalOpenEncryption: {
-              target: ".Modal.Encryption",
-            },
-            ModalOpenSettings: {
-              target: ".Modal.Settings",
-            },
-            ModalConfirmDeletion: {
-              target: ".Modal.Deletion",
-            },
-            Reload: {
-              target: "Loading",
-            },
-            SearchTagAdd: {
-              target: "Loading",
+            EncryptAndSave: {
               actions: assign({
-                searchTags: ({ event, context }) => {
-                  context.searchTags.add(event.tag);
-                  return new Set(context.searchTags);
-                },
+                note: ({ event }) => event.note,
+                noteEncrypting: () => true,
               }),
+              target: "Password",
             },
-            SearchTagRemove: {
-              target: "Loading",
-              actions: assign({
-                searchTags: ({ event, context }) => {
-                  context.searchTags.delete(event.tag);
-                  return new Set(context.searchTags);
-                },
-              }),
-            },
-            SearchKeywordSet: {
-              target: "Loading",
-              actions: assign({
-                searchKeyword: ({ event }) => event.keyword,
-              }),
-            },
-            LimitSet: {
-              target: "Loading",
-              actions: assign({
-                limit: ({ event }) => event.limit,
-              }),
-            }
           },
-          states: {
-            Items: {
-              initial: "Transient",
-              states: {
-                Transient: {
-                  always: [
-                    {
-                      guard: "IsNotesEmpty",
-                      target: "Blank",
-                    },
-                    {
-                      target: "Filled",
-                    },
-                  ],
-                },
-                Blank: {},
-                Filled: {},
-              },
+          invoke: {
+            src: logicModalNote,
+            input: ({ context }) => ({
+              client: context.client,
+              modalStore: context.modalStore,
+              note: context.note,
+            }),
+          },
+        },
+        Password: {
+          on: {
+            Submit: {
+              actions: assign({
+                password: ({ event }) => event.password,
+              }),
+              target: "#App.DataEncrypting",
             },
-            Toaster: {},
-            LoadingMore: {
-              initial: "Idling",
-              states: {
-                Idling: {},
-                Working: {},
-              },
-            },
-            Modal: {
-              initial: "None",
-              on: {
-                ModalCancel: {
-                  target: ".None",
-                },
-              },
-              states: {
-                None: {},
-                Encryption: {},
-                Settings: {},
-                Deletion: {},
-                Note: {},
-              },
-            },
+          },
+          invoke: {
+            src: logicModalPassword,
+            input: ({ context }) => ({
+              modalStore: context.modalStore,
+            }),
           },
         },
       },

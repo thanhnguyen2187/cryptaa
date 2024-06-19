@@ -1,6 +1,36 @@
 <script lang="ts">
+import { globalAppActor, globalClient } from "$lib/global";
+import { useSelector } from "@xstate/svelte";
+import NoteList from "../../components/NoteList.svelte";
+import { faAdd, faGear } from "@fortawesome/free-solid-svg-icons";
+import { Fa } from "svelte-fa";
+
+const globalAppState = useSelector(globalAppActor, (snapshot) => snapshot);
+
+function sendModalOpenNoteNew() {
+  console.log("sendModalOpenNoteNew")
+  globalAppActor.send({type: "ModalOpenNoteNew"})
+}
 </script>
 
-<div>Hello world</div>
+<div>{JSON.stringify($globalAppState.value)}</div>
+{#if $globalAppState.matches("Idling")}
+  <button
+    class="btn-icon variant-filled-secondary absolute bottom-6 left-6"
+  >
+    <Fa icon={faGear} size="lg"/>
+  </button>
+  <button
+    class="btn-icon variant-filled-secondary absolute bottom-6 right-6"
+    on:click={sendModalOpenNoteNew}
+  >
+    <Fa icon={faAdd} size="lg"/>
+  </button>
+{/if}
+<div class="container mt-4 mx-auto flex justify-center items-center">
+  {#if $globalAppState.matches("Idling.Filled")}
+    <NoteList notes={$globalAppState.context.notes}/>
+  {/if}
+</div>
 
 <style lang="postcss"></style>
