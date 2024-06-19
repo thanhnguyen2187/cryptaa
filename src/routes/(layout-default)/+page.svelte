@@ -8,7 +8,6 @@ import { Fa } from "svelte-fa";
 const globalAppState = useSelector(globalAppActor, (snapshot) => snapshot);
 
 function sendModalOpenNoteNew() {
-  console.log("sendModalOpenNoteNew")
   globalAppActor.send({type: "ModalOpenNoteNew"})
 }
 </script>

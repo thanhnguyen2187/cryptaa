@@ -22,9 +22,7 @@ const modalStore = getModalStore();
 const toastStore = getToastStore();
 
 export let note: NoteDisplay;
-export let fnUpdate: (note: NoteDisplay) => void;
 export let fnEncrypt: (note: NoteDisplay) => void;
-export let fnDelete: (noteId: string) => void;
 export let fnTagAdd: (tag: string) => void;
 
 let state: "idling" | "encrypted" | "decrypted" = "idling";
@@ -134,8 +132,12 @@ async function copy() {
   }
 }
 
-async function delete_() {
+function delete_() {
   globalAppActor.send({ type: "Delete", note });
+}
+
+function update() {
+  globalAppActor.send({ type: "ModalOpenNote", note });
 }
 
 $: {
@@ -166,7 +168,7 @@ $: {
   <div class="w-40 md:w-60 flex items-center">
     <button
       class="truncate"
-      on:click={() => fnUpdate(note)}
+      on:click={update}
     >
       {note.title}
     </button>
@@ -204,7 +206,7 @@ $: {
   <!--TODO: improve the width of this to remove the redundant end gap-->
   <div class="w-24 flex items-center gap-2">
     {#if state === "idling"}
-      <button on:click={() => fnUpdate(note)}>
+      <button on:click={update}>
         <Fa icon={faEdit}></Fa>
       </button>
       <button on:click={copy}>

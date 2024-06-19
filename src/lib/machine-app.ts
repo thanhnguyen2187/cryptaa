@@ -133,6 +133,7 @@ export const machine = setup({
       | { type: "No" }
       | { type: "Reload" }
       | { type: "ModalOpenNoteNew" }
+      | { type: "ModalOpenNote"; note: NoteDisplay }
       | { type: "ModalClosed" }
       | { type: "Check" }
       | { type: "Cancel" }
@@ -153,7 +154,6 @@ export const machine = setup({
       | { type: "SearchTagRemove"; tag: string }
       | { type: "SearchKeywordSet"; keyword: string }
       | { type: "LimitSet"; limit: number }
-      | { type: "ModalOpenNote"; note: NoteDisplay }
       | { type: "ModalOpenEncryption"; note: NoteDisplay }
       | { type: "ModalOpenSettings" }
       | { type: "ModalConfirmDeletion" }
@@ -361,6 +361,12 @@ export const machine = setup({
               target: "#App.Idling.Modal.Note",
               actions: assign({
                 note: createEmptyNoteDisplay(),
+              }),
+            },
+            ModalOpenNote: {
+              target: "#App.Idling.Modal.Note",
+              actions: assign({
+                note: ({ event }) => event.note,
               }),
             },
             Reload: {
