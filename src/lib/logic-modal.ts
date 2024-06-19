@@ -81,3 +81,26 @@ export const logicModalPassword = fromCallback<
     },
   });
 });
+
+export const logicModalConfirm = fromCallback<
+  EventObject,
+  {
+    modalStore?: ModalStore;
+  }
+>(({ sendBack, input }) => {
+  if (!input.modalStore) {
+    console.error("logicModalConfirm: unreachable code");
+    return;
+  }
+  input.modalStore.trigger({
+    type: "confirm",
+    body: "Are you sure you want to delete this note?",
+    response: (result: boolean) => {
+      if (result) {
+        sendBack({ type: "Yes" });
+      } else {
+        sendBack({ type: "No" });
+      }
+    },
+  });
+});

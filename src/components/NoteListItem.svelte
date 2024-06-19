@@ -1,27 +1,22 @@
 <script lang="ts">
 import { formatDate } from "$lib/date";
-import { globalClient } from "$lib/global";
+import { globalClient, globalAppActor } from "$lib/global";
 import {
-	faCopy,
-	faEdit,
-	faKey,
-	faLock,
-	faTrashCan,
-	faUnlock,
+  faCopy,
+  faEdit,
+  faKey,
+  faLock,
+  faTrashCan,
+  faUnlock,
 } from "@fortawesome/free-solid-svg-icons";
-import {
-	InputChip,
-	getModalStore,
-	getToastStore,
-  popup,
-} from "@skeletonlabs/skeleton";
+import { getModalStore, getToastStore, popup } from "@skeletonlabs/skeleton";
 import { useMachine } from "@xstate/svelte";
 import { Fa } from "svelte-fa";
 import { aesGcmDecrypt } from "../data/encryption";
 import type { NoteDisplay } from "../data/schema-triplit";
 import ModalEncryption from "./ModalEncryption.svelte";
-import { notesUpsert } from '../data/queries-triplit';
-import { copyToClipboard } from '$lib/clipboard';
+import { notesUpsert } from "../data/queries-triplit";
+import { copyToClipboard } from "$lib/clipboard";
 
 const modalStore = getModalStore();
 const toastStore = getToastStore();
@@ -35,50 +30,50 @@ export let fnTagAdd: (tag: string) => void;
 let state: "idling" | "encrypted" | "decrypted" = "idling";
 
 function decrypt() {
-	modalStore.trigger({
-		type: "component",
-		component: {
-			ref: ModalEncryption,
-			props: {
-				note,
+  modalStore.trigger({
+    type: "component",
+    component: {
+      ref: ModalEncryption,
+      props: {
+        note,
         showWarning: false,
-				fnCancel: modalStore.close,
-				fnSubmit: async (password: string) => {
-					try {
-						const decryptedText = await aesGcmDecrypt(note.text, password);
-						note.text = decryptedText;
-						note.encrypted = false;
-						state = "decrypted";
+        fnCancel: modalStore.close,
+        fnSubmit: async (password: string) => {
+          try {
+            const decryptedText = await aesGcmDecrypt(note.text, password);
+            note.text = decryptedText;
+            note.encrypted = false;
+            state = "decrypted";
             toastStore.trigger({
               message: "Decrypted successfully!",
               background: "variant-ghost-success",
               timeout: 2000,
             });
-					} catch (e: unknown) {
-						// @ts-ignore
-						if ("message" in e && e.message === "Decrypt failed") {
-							toastStore.trigger({
-								message: "Incorrect password!",
-								background: "variant-ghost-warning",
-								timeout: 2000,
-							});
-						} else {
-							console.error(e);
-						}
-					} finally {
-						modalStore.close();
-					}
-				},
-			},
-		},
-	});
+          } catch (e: unknown) {
+            // @ts-ignore
+            if ("message" in e && e.message === "Decrypt failed") {
+              toastStore.trigger({
+                message: "Incorrect password!",
+                background: "variant-ghost-warning",
+                timeout: 2000,
+              });
+            } else {
+              console.error(e);
+            }
+          } finally {
+            modalStore.close();
+          }
+        },
+      },
+    },
+  });
 }
 
 async function clear() {
-	if (state === "decrypted") {
+  if (state === "decrypted") {
     await notesUpsert(globalClient, note);
     state = "idling";
-	} else if (state === "encrypted") {
+  } else if (state === "encrypted") {
     modalStore.trigger({
       type: "component",
       component: {
@@ -121,8 +116,8 @@ async function clear() {
 }
 
 async function copy() {
-  const result = await copyToClipboard(note.text)
-  if (result === 'success') {
+  const result = await copyToClipboard(note.text);
+  if (result === "success") {
     toastStore.trigger({
       message: "Copied content to clipboard!",
       background: "bg-success-800",
@@ -139,10 +134,14 @@ async function copy() {
   }
 }
 
+async function delete_() {
+  globalAppActor.send({ type: "Delete", note });
+}
+
 $: {
-	if (note.encrypted && state === "idling") {
-		state = "encrypted";
-	}
+  if (note.encrypted && state === "idling") {
+    state = "encrypted";
+  }
 }
 </script>
 
@@ -235,7 +234,7 @@ $: {
         <Fa icon={faKey}></Fa>
       </button>
     {/if}
-    <button on:click={() => fnDelete(note.id)}>
+    <button on:click={delete_}>
       <Fa icon={faTrashCan}></Fa>
     </button>
   </div>

@@ -5,11 +5,20 @@ import {
   encryptNote,
 } from "../data/data-transformation";
 import type { TriplitClient } from "@triplit/client";
-import { noteCount, notesRead, notesUpsert } from "../data/queries-triplit";
+import {
+  noteCount,
+  notesDelete,
+  notesRead,
+  notesUpsert,
+} from "../data/queries-triplit";
 import type { ToastManager } from "$lib/toast-manager";
 import { registerServiceWorker } from "$lib/sw-registration";
 import type { ModalManager } from "$lib/modal-manager";
-import { logicModalNote, logicModalPassword } from "$lib/logic-modal";
+import {
+  logicModalConfirm,
+  logicModalNote,
+  logicModalPassword,
+} from "$lib/logic-modal";
 import type { Modal, ModalStore } from "@skeletonlabs/skeleton";
 
 export const logicNotesRead = fromPromise(
@@ -74,6 +83,19 @@ export const logicNotesEncrypt = fromPromise(
   },
 );
 
+export const logicNotesDelete = fromPromise(
+  async ({
+    input,
+  }: {
+    input: {
+      client: TriplitClient;
+      noteId: string;
+    };
+  }) => {
+    return notesDelete(input.client, input.noteId);
+  },
+);
+
 export const logicRegisterSW = fromPromise(registerServiceWorker);
 
 export type Context = {
@@ -104,7 +126,11 @@ export const machine = setup({
       | { type: "SetNote"; value: NoteDisplay }
       | { type: "SetLimit"; value: number }
       | { type: "Save"; note: NoteDisplay }
+      | { type: "EncryptAndSave"; note: NoteDisplay }
       | { type: "Submit"; password: string }
+      | { type: "Delete"; note: NoteDisplay }
+      | { type: "Yes" }
+      | { type: "No" }
       | { type: "Reload" }
       | { type: "ModalOpenNoteNew" }
       | { type: "ModalClosed" }
@@ -227,7 +253,7 @@ export const machine = setup({
             Loaded: {
               type: "final",
             },
-          }
+          },
         },
         Count: {
           initial: "Loading",
@@ -256,7 +282,7 @@ export const machine = setup({
               },
             },
             Loaded: {
-              type: "final"
+              type: "final",
             },
           },
         },
@@ -306,84 +332,130 @@ export const machine = setup({
         },
       },
     },
-    Idling: {
-      initial: "Transient",
-      on: {
-        ModalOpenNoteNew: {
-          target: "#App.Modal.Note",
-          actions: assign({
-            note: createEmptyNoteDisplay(),
-          }),
-        },
-        Reload: {
+    DataDeleting: {
+      invoke: {
+        src: logicNotesDelete,
+        input: ({ context }) => ({
+          client: context.client,
+          noteId: context.note.id,
+        }),
+        onDone: {
           target: "DataLoading",
         },
-      },
-      states: {
-        Transient: {
-          always: [
-            {
-              guard: "IsNotesEmpty",
-              target: "Empty",
-            },
-            {
-              target: "Filled",
-            },
-          ],
+        onError: {
+          target: "DataError",
+          actions: ({ context, event }) => {
+            context.toastManager.error("Error happened deleting data");
+            console.error(event.error);
+          },
         },
-        Empty: {},
-        Filled: {},
       },
     },
-    Modal: {
-      initial: "None",
-      on: {
-        ModalClosed: {
-          target: "Idling",
-        },
-      },
+    Idling: {
+      type: "parallel",
       states: {
-        None: {},
-        Note: {
+        Items: {
+          initial: "Transient",
           on: {
-            Save: {
+            ModalOpenNoteNew: {
+              target: "#App.Idling.Modal.Note",
               actions: assign({
-                note: ({ event }) => event.note,
-                noteEncrypting: () => false,
+                note: createEmptyNoteDisplay(),
               }),
-              target: "#App.DataUpserting",
             },
-            EncryptAndSave: {
+            Reload: {
+              target: "#App.DataLoading",
+            },
+            Delete: {
+              target: "#App.Idling.Modal.DeleteConfirm",
               actions: assign({
                 note: ({ event }) => event.note,
-                noteEncrypting: () => true,
               }),
-              target: "Password",
             },
           },
-          invoke: {
-            src: logicModalNote,
-            input: ({ context }) => ({
-              client: context.client,
-              modalStore: context.modalStore,
-              note: context.note,
-            }),
+          states: {
+            Transient: {
+              always: [
+                {
+                  guard: "IsNotesEmpty",
+                  target: "Empty",
+                },
+                {
+                  target: "Filled",
+                },
+              ],
+            },
+            Empty: {},
+            Filled: {},
           },
         },
-        Password: {
+        Modal: {
+          initial: "None",
           on: {
-            Submit: {
-              actions: assign({
-                password: ({ event }) => event.password,
-              }),
-              target: "#App.DataEncrypting",
+            ModalClosed: {
+              target: "#App.Idling.Modal.None",
             },
           },
-          invoke: {
-            src: logicModalPassword,
-            input: ({ context }) => ({
-              modalStore: context.modalStore,
-            }),
+          states: {
+            None: {},
+            Note: {
+              on: {
+                Save: {
+                  actions: assign({
+                    note: ({ event }) => event.note,
+                    noteEncrypting: () => false,
+                  }),
+                  target: "#App.DataUpserting",
+                },
+                EncryptAndSave: {
+                  actions: assign({
+                    note: ({ event }) => event.note,
+                    noteEncrypting: () => true,
+                  }),
+                  target: "Password",
+                },
+              },
+              invoke: {
+                src: logicModalNote,
+                input: ({ context }) => ({
+                  client: context.client,
+                  modalStore: context.modalStore,
+                  note: context.note,
+                }),
+              },
+            },
+            Password: {
+              on: {
+                Submit: {
+                  actions: assign({
+                    password: ({ event }) => event.password,
+                  }),
+                  target: "#App.DataEncrypting",
+                },
+              },
+              invoke: {
+                src: logicModalPassword,
+                input: ({ context }) => ({
+                  modalStore: context.modalStore,
+                }),
+              },
+            },
+            DeleteConfirm: {
+              on: {
+                Yes: {
+                  target: "#App.DataDeleting",
+                },
+                No: {
+                  target: "#App.Idling",
+                },
+              },
+              invoke: {
+                src: logicModalConfirm,
+                input: ({ context }) => ({
+                  modalStore: context.modalStore,
+                }),
+              },
+            },
           },
         },
       },

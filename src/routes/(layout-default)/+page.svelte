@@ -28,7 +28,7 @@ function sendModalOpenNoteNew() {
   </button>
 {/if}
 <div class="container mt-4 mx-auto flex justify-center items-center">
-  {#if $globalAppState.matches("Idling.Filled")}
+  {#if $globalAppState.matches("Idling")}
     <NoteList notes={$globalAppState.context.notes}/>
   {/if}
 </div>
