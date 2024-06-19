@@ -7,7 +7,7 @@ import {
   faChevronDown,
 } from "@fortawesome/free-solid-svg-icons";
 import { noteCount, notesRead } from '../data/queries-triplit';
-import { globalActorApp, globalClient } from '$lib/global';
+import { globalAppActor, globalClient } from '$lib/global';
 import { useSelector } from '@xstate/svelte';
 
 export let notes: NoteDisplay[] = [];
@@ -16,9 +16,9 @@ export let fnEncrypt: (note: NoteDisplay) => void;
 export let fnDelete: (noteId: string) => void;
 export let fnTagAdd: (tag: string) => void;
 
-const currentState = useSelector(globalActorApp, (state) => state);
-const appSend = globalActorApp.send;
-const tags = useSelector(globalActorApp, (state) => state.context.searchTags);
+const currentState = useSelector(globalAppActor, (state) => state);
+const appSend = globalAppActor.send;
+const tags = useSelector(globalAppActor, (state) => state.context.searchTags);
 
 async function itemsLoad() {
   try {
@@ -52,7 +52,7 @@ function reload() {
   itemsLoad();
 }
 
-const showAddMore = useSelector(globalActorApp, (state) => state.context.limit < state.context.notesTotalCount);
+const showAddMore = useSelector(globalAppActor, (state) => state.context.limit < state.context.notesTotalCount);
 </script>
 
 <div class="flex flex-col gap-2">
