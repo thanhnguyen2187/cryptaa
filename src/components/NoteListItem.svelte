@@ -65,6 +65,13 @@ function clear() {
   }
 }
 
+function addTag(tag: string) {
+  globalAppActor.send({ type: "TagAdd", tag });
+}
+
+function deleteTag(tag: string) {
+  globalAppActor.send({ type: "TagDelete", tag });
+}
 </script>
 
 <div
@@ -76,7 +83,7 @@ function clear() {
     {#each note.tags.slice(2) as tag_}
       <button
         class="chip variant-ghost-secondary"
-        on:click={() => fnTagAdd(tag_)}
+        on:click={() => addTag(tag_)}
       >
         {tag_}
       </button>
@@ -99,7 +106,7 @@ function clear() {
     {#each note.tags.slice(0, 2) as tag}
       <button
         class="chip variant-ghost-secondary"
-        on:click={() => fnTagAdd(tag)}
+        on:click={() => addTag(tag)}
       >
         {tag}
       </button>

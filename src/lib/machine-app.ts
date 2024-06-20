@@ -194,6 +194,9 @@ export const machine = setup({
       | { type: "Clear"; note: NoteDisplay }
       | { type: "SetNotes"; value: NoteDisplay[] }
       | { type: "SetNotesTotalCount"; value: number }
+      | { type: "TagAdd"; tag: string }
+      | { type: "TagDelete"; tag: string }
+      | { type: "SetKeyword"; value: string }
       | { type: "Yes" }
       | { type: "No" }
       | { type: "Reload" }
@@ -549,6 +552,30 @@ export const machine = setup({
               }),
               target: "#App.Idling.Modal.PasswordClear",
             },
+            TagAdd: {
+              actions: assign({
+                tags: ({context, event}) => {
+                  context.tags.add(event.tag);
+                  return new Set(context.tags);
+                },
+              }),
+              target: "#App.Idling",
+            },
+            TagDelete: {
+              actions: assign({
+                tags: ({context, event}) => {
+                  context.tags.delete(event.tag);
+                  return new Set(...context.tags);
+                },
+              }),
+              target: "#App.Idling",
+            },
+            SetKeyword: {
+              actions: assign({
+                keyword: ({event}) => event.value,
+              }),
+              target: "#App.Idling",
+            }
           },
           // states: {
           //   Transient: {
