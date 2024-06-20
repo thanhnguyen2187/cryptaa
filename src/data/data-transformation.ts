@@ -7,7 +7,7 @@ export function createEmptyNoteDisplay(): NoteDisplay {
 		title: "To be filled",
 		text: "To be filled",
 		tags: ["tag-1", "tag-2"],
-		encrypted: false,
+		encryptionState: "none",
 		createdAt: new Date(),
 		updatedAt: new Date(),
 	};
@@ -21,7 +21,7 @@ export async function encryptNote(
 	const encryptedNote: NoteDisplay = {
 		...originalNote,
 		text: encryptedText,
-		encrypted: true,
+		encryptionState: "encrypted",
 	};
 	return encryptedNote;
 }

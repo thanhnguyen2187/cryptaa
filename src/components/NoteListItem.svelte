@@ -8,9 +8,10 @@ import {
   faLock,
   faTrashCan,
   faUnlock,
+  type IconDefinition,
 } from "@fortawesome/free-solid-svg-icons";
 import { getModalStore, getToastStore, popup } from "@skeletonlabs/skeleton";
-import { useMachine } from "@xstate/svelte";
+import { useMachine, useSelector } from "@xstate/svelte";
 import { Fa } from "svelte-fa";
 import { aesGcmDecrypt } from "../data/encryption";
 import type { NoteDisplay } from "../data/schema-triplit";
@@ -18,7 +19,6 @@ import ModalEncryption from "./ModalEncryption.svelte";
 import { notesUpsert } from "../data/queries-triplit";
 import { copyToClipboard } from "$lib/clipboard";
 
-const modalStore = getModalStore();
 const toastStore = getToastStore();
 
 export let note: NoteDisplay;
@@ -27,90 +27,12 @@ export let fnTagAdd: (tag: string) => void;
 
 let state: "idling" | "encrypted" | "decrypted" = "idling";
 
-function decrypt() {
-  modalStore.trigger({
-    type: "component",
-    component: {
-      ref: ModalEncryption,
-      props: {
-        note,
-        showWarning: false,
-        fnCancel: modalStore.close,
-        fnSubmit: async (password: string) => {
-          try {
-            const decryptedText = await aesGcmDecrypt(note.text, password);
-            note.text = decryptedText;
-            note.encrypted = false;
-            state = "decrypted";
-            toastStore.trigger({
-              message: "Decrypted successfully!",
-              background: "variant-ghost-success",
-              timeout: 2000,
-            });
-          } catch (e: unknown) {
-            // @ts-ignore
-            if ("message" in e && e.message === "Decrypt failed") {
-              toastStore.trigger({
-                message: "Incorrect password!",
-                background: "variant-ghost-warning",
-                timeout: 2000,
-              });
-            } else {
-              console.error(e);
-            }
-          } finally {
-            modalStore.close();
-          }
-        },
-      },
-    },
-  });
+function decrypt_() {
+  globalAppActor.send({ type: "Decrypt", note });
 }
 
-async function clear() {
-  if (state === "decrypted") {
-    await notesUpsert(globalClient, note);
-    state = "idling";
-  } else if (state === "encrypted") {
-    modalStore.trigger({
-      type: "component",
-      component: {
-        ref: ModalEncryption,
-        props: {
-          note,
-          showWarning: false,
-          fnCancel: modalStore.close,
-          fnSubmit: async (password: string) => {
-            try {
-              const decryptedText = await aesGcmDecrypt(note.text, password);
-              note.text = decryptedText;
-              note.encrypted = false;
-              state = "idling";
-              toastStore.trigger({
-                message: "Decrypted successfully!",
-                background: "variant-ghost-success",
-                timeout: 2000,
-              });
-              await notesUpsert(globalClient, note);
-            } catch (e: unknown) {
-              // @ts-ignore
-              if ("message" in e && e.message === "Decrypt failed") {
-                toastStore.trigger({
-                  message: "Incorrect password!",
-                  background: "variant-ghost-warning",
-                  timeout: 2000,
-                });
-              } else {
-                console.error(e);
-              }
-            } finally {
-              modalStore.close();
-            }
-          },
-        },
-      },
-    });
-  }
+function encrypt() {
+  globalAppActor.send({ type: "Encrypt", note });
 }
 
 async function copy() {
@@ -140,11 +62,12 @@ function update() {
   globalAppActor.send({ type: "ModalOpenNote", note });
 }
 
-$: {
-  if (note.encrypted && state === "idling") {
-    state = "encrypted";
+function clear() {
+  if (note.encryptionState === "encrypted") {
+    globalAppActor.send({ type: "Clear", note });
   }
 }
+
 </script>
 
 <div
@@ -205,28 +128,28 @@ $: {
   </div>
   <!--TODO: improve the width of this to remove the redundant end gap-->
   <div class="w-24 flex items-center gap-2">
-    {#if state === "idling"}
+    {#if note.encryptionState === "none"}
       <button on:click={update}>
         <Fa icon={faEdit}></Fa>
       </button>
       <button on:click={copy}>
         <Fa icon={faCopy}></Fa>
       </button>
-      <button on:click={() => fnEncrypt(note)}>
+      <button on:click={encrypt}>
         <Fa icon={faLock}></Fa>
       </button>
-    {:else if state === "encrypted"}
+    {:else if note.encryptionState === "encrypted"}
       <button class="invisible">
         <Fa icon={faEdit}></Fa>
       </button>
-      <button on:click={decrypt}>
+      <button on:click={decrypt_}>
         <Fa icon={faUnlock}></Fa>
       </button>
       <button on:click={clear}>
         <Fa icon={faKey}></Fa>
       </button>
-    {:else if state === "decrypted"}
-      <button>
+    {:else if note.encryptionState === "decrypted"}
+      <button on:click={update}>
         <Fa icon={faEdit}></Fa>
       </button>
       <button on:click={copy}>

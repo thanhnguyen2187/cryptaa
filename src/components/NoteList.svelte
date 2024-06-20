@@ -16,6 +16,7 @@ export let fnDelete: (noteId: string) => void;
 export let fnTagAdd: (tag: string) => void;
 
 function reload() {
+  globalAppActor.send({ type: "SetLimit", value: 10 });
   globalAppActor.send({ type: "Reload" });
 }
 

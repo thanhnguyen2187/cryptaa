@@ -13,13 +13,13 @@ import {
 } from "../data/queries-triplit";
 import type { ToastManager } from "$lib/toast-manager";
 import { registerServiceWorker } from "$lib/sw-registration";
-import type { ModalManager } from "$lib/modal-manager";
 import {
   logicModalConfirm,
   logicModalNote,
   logicModalPassword,
 } from "$lib/logic-modal";
 import type { Modal, ModalStore } from "@skeletonlabs/skeleton";
+import { aesGcmDecrypt } from "../data/encryption";
 
 export const logicNotesRead = fromPromise(
   async ({
@@ -57,16 +57,9 @@ export const logicNotesUpsert = fromPromise(
     input: {
       client: TriplitClient;
       note: NoteDisplay;
-      noteEncrypting: boolean;
-      password: string;
     };
   }) => {
-    if (!input.noteEncrypting) {
-      await notesUpsert(input.client, input.note);
-    } else {
-      const encryptedNote = await encryptNote(input.note, input.password);
-      await notesUpsert(input.client, encryptedNote);
-    }
+    await notesUpsert(input.client, input.note);
   },
 );
 
@@ -80,6 +73,30 @@ export const logicNotesEncrypt = fromPromise(
     };
   }) => {
     return encryptNote(input.note, input.password);
+  },
+);
+
+export const logicNotesDecrypt = fromPromise(
+  async ({
+    input,
+  }: {
+    input: {
+      note: NoteDisplay;
+      password: string;
+    };
+  }) => {
+    const decryptedText = await aesGcmDecrypt(input.note.text, input.password);
+    // const decryptedNote: NoteDisplay = {
+    //   ...input.note,
+    //   text: decryptedText,
+    //   encrypted: false,
+    // };
+    // return decryptedNote;
+    input.note.text = decryptedText;
+    input.note.encryptionState = "decrypted";
+    // WARN: this is a hacky way to make local decryption works, as the returned
+    // `note` is mutated and thus changes are detected and applied.
+    return input.note;
   },
 );
 
@@ -129,6 +146,9 @@ export const machine = setup({
       | { type: "EncryptAndSave"; note: NoteDisplay }
       | { type: "Submit"; password: string }
       | { type: "Delete"; note: NoteDisplay }
+      | { type: "Decrypt"; note: NoteDisplay }
+      | { type: "Encrypt"; note: NoteDisplay }
+      | { type: "Clear"; note: NoteDisplay }
       | { type: "Yes" }
       | { type: "No" }
       | { type: "Reload" }
@@ -146,7 +166,6 @@ export const machine = setup({
       | { type: "SucceededAction" }
       | { type: "Retry" }
       | { type: "Input" }
-      | { type: "Clear" }
       | { type: "Retried" }
       | { type: "Error" }
       | { type: "Loaded"; notes: NoteDisplay[]; totalCount: number }
@@ -163,6 +182,10 @@ export const machine = setup({
   },
   guards: {
     IsNotesEmpty: ({ context }) => context.notes.length === 0,
+    IsWrongPassword: (_, params: { error: Error }) =>
+      params.error.message === "Decrypt failed",
+    IsWrongFormat: (_, params: { error: Error }) =>
+      params.error.message === "Invalid ciphertext",
   },
   actors: {
     logicNotesRead,
@@ -170,6 +193,7 @@ export const machine = setup({
     logicRegisterSW,
     logicModalNote,
     logicNotesEncrypt,
+    logicNotesDecrypt,
   },
 }).createMachine({
   context: ({ input }) => ({
@@ -295,8 +319,6 @@ export const machine = setup({
         input: ({ context }) => ({
           client: context.client,
           note: context.note,
-          noteEncrypting: context.noteEncrypting,
-          password: context.password,
         }),
         onDone: {
           target: "DataLoading",
@@ -330,6 +352,88 @@ export const machine = setup({
             console.error(event.error);
           },
         },
+      },
+    },
+    DataDecrypting: {
+      invoke: {
+        src: logicNotesDecrypt,
+        input: ({ context }) => ({
+          note: context.note,
+          password: context.password,
+        }),
+        onDone: {
+          target: "Idling",
+          actions: assign({
+            note: ({ event }) => {
+              return event.output as NoteDisplay;
+            },
+          }),
+        },
+        onError: [
+          {
+            guard: {
+              type: "IsWrongPassword",
+              params: ({ event }) => ({ error: event.error as Error }),
+            },
+            actions: ({ context }) =>
+              context.toastManager.warn("Wrong password"),
+            target: "Idling",
+          },
+          {
+            guard: {
+              type: "IsWrongFormat",
+              params: ({ event }) => ({ error: event.error as Error }),
+            },
+            actions: ({ context }) =>
+              context.toastManager.error("Invalid text format"),
+            target: "Idling",
+          },
+          {
+            actions: ({ event }) => console.error(event.error),
+            target: "DataError",
+          },
+        ],
+      },
+    },
+    DataClearing: {
+      invoke: {
+        src: logicNotesDecrypt,
+        input: ({ context }) => ({
+          note: context.note,
+          password: context.password,
+        }),
+        onDone: {
+          target: "DataUpserting",
+          actions: assign({
+            note: ({ event }) => {
+              return event.output as NoteDisplay;
+            },
+          }),
+        },
+        onError: [
+          {
+            guard: {
+              type: "IsWrongPassword",
+              params: ({ event }) => ({ error: event.error as Error }),
+            },
+            actions: ({ context }) =>
+              context.toastManager.warn("Wrong password"),
+            target: "Idling",
+          },
+          {
+            guard: {
+              type: "IsWrongFormat",
+              params: ({ event }) => ({ error: event.error as Error }),
+            },
+            actions: ({ context }) =>
+              context.toastManager.error("Invalid text format"),
+            target: "Idling",
+          },
+          {
+            actions: ({ event }) => console.error(event.error),
+            target: "DataError",
+          },
+        ],
       },
     },
     DataDeleting: {
@@ -378,6 +482,24 @@ export const machine = setup({
                 note: ({ event }) => event.note,
               }),
             },
+            Decrypt: {
+              actions: assign({
+                note: ({ event }) => event.note,
+              }),
+              target: "#App.Idling.Modal.PasswordDecrypt",
+            },
+            Encrypt: {
+              actions: assign({
+                note: ({ event }) => event.note,
+              }),
+              target: "#App.Idling.Modal.PasswordEncrypt",
+            },
+            Clear: {
+              actions: assign({
+                note: ({ event }) => event.note,
+              }),
+              target: "#App.Idling.Modal.PasswordClear",
+            },
           },
           states: {
             Transient: {
@@ -416,9 +538,8 @@ export const machine = setup({
                 EncryptAndSave: {
                   actions: assign({
                     note: ({ event }) => event.note,
-                    noteEncrypting: () => true,
                   }),
-                  target: "Password",
+                  target: "PasswordEncrypt",
                 },
               },
               invoke: {
@@ -430,7 +551,7 @@ export const machine = setup({
                 }),
               },
             },
-            Password: {
+            PasswordEncrypt: {
               on: {
                 Submit: {
                   actions: assign({
@@ -457,6 +578,38 @@ export const machine = setup({
               },
               invoke: {
                 src: logicModalConfirm,
+                input: ({ context }) => ({
+                  modalStore: context.modalStore,
+                }),
+              },
+            },
+            PasswordDecrypt: {
+              on: {
+                Submit: {
+                  actions: assign({
+                    password: ({ event }) => event.password,
+                  }),
+                  target: "#App.DataDecrypting",
+                },
+              },
+              invoke: {
+                src: logicModalPassword,
+                input: ({ context }) => ({
+                  modalStore: context.modalStore,
+                }),
+              },
+            },
+            PasswordClear: {
+              on: {
+                Submit: {
+                  actions: assign({
+                    password: ({ event }) => event.password,
+                  }),
+                  target: "#App.DataClearing",
+                },
+              },
+              invoke: {
+                src: logicModalPassword,
                 input: ({ context }) => ({
                   modalStore: context.modalStore,
                 }),

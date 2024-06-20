@@ -28,7 +28,7 @@ export let fnCancel: () => void;
         class="input"
         spellcheck="false"
         bind:value={note.title}
-        disabled={note.encrypted}
+        disabled={note.encryptionState === "encrypted"}
       />
     </label>
     <label class="label">
@@ -38,7 +38,7 @@ export let fnCancel: () => void;
         rows="8"
         spellcheck="false"
         bind:value={note.text}
-        disabled={note.encrypted}
+        disabled={note.encryptionState === "encrypted"}
       ></textarea>
     </label>
     <label>
@@ -46,7 +46,7 @@ export let fnCancel: () => void;
       <InputChip
         name="tags"
         bind:value={note.tags}
-        disabled={note.encrypted}
+        disabled={note.encryptionState === "encrypted"}
       />
     </label>
     <label class="label">
@@ -78,14 +78,14 @@ export let fnCancel: () => void;
     <button
       class="btn variant-filled"
       on:click={fnSave}
-      disabled={note.encrypted}
+      disabled={note.encryptionState === "encrypted"}
     >
       Save
     </button>
     <button
       class="btn variant-soft-secondary"
       on:click={fnEncryptAndSave}
-      disabled={note.encrypted}
+      disabled={note.encryptionState === "encrypted"}
     >
       Encrypt & Save
     </button>

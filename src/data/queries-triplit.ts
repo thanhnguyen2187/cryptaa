@@ -25,8 +25,9 @@ export async function notesRead(
     policy: "local-and-remote",
   });
   const notes = Array.from(result.values());
-  const noteDisplays = notes.map((note) => ({
+  const noteDisplays: NoteDisplay[] = notes.map((note) => ({
     ...note,
+    encryptionState: note.encrypted ? "encrypted" : "none",
     tags: Array.from((note.tags ?? new Set()).keys())
       // @ts-ignore
       // .map((tag: NoteTag) => tag.tagText)
@@ -72,7 +73,7 @@ export async function notesUpsert(
       title: noteDisplay.title,
       text: noteDisplay.text,
       tags: new Set(noteDisplay.tags),
-      encrypted: noteDisplay.encrypted,
+      encrypted: noteDisplay.encryptionState === "encrypted",
     });
   } else {
     await client.insert("notes", {
@@ -80,7 +81,7 @@ export async function notesUpsert(
       title: noteDisplay.title,
       text: noteDisplay.text,
       tags: new Set(noteDisplay.tags),
-      encrypted: noteDisplay.encrypted,
+      encrypted: noteDisplay.encryptionState === "encrypted",
       updatedAt: new Date(),
       createdAt: noteDisplay.createdAt,
     });
