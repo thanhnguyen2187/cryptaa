@@ -22,10 +22,7 @@ import { copyToClipboard } from "$lib/clipboard";
 const toastStore = getToastStore();
 
 export let note: NoteDisplay;
-export let fnEncrypt: (note: NoteDisplay) => void;
 export let fnTagAdd: (tag: string) => void;
-
-let state: "idling" | "encrypted" | "decrypted" = "idling";
 
 function decrypt_() {
   globalAppActor.send({ type: "Decrypt", note });

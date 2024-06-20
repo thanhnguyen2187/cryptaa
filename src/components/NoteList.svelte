@@ -10,9 +10,6 @@ import { globalAppActor } from "$lib/global";
 import { useSelector } from "@xstate/svelte";
 
 export let notes: NoteDisplay[] = [];
-export let fnUpdate: (note: NoteDisplay) => void;
-export let fnEncrypt: (note: NoteDisplay) => void;
-export let fnDelete: (noteId: string) => void;
 export let fnTagAdd: (tag: string) => void;
 
 function reload() {
@@ -36,9 +33,6 @@ const showAddMore = useSelector(
   {#each notes as note(note.id)}
     <Item
       {note}
-      {fnUpdate}
-      {fnEncrypt}
-      {fnDelete}
       {fnTagAdd}
     />
   {/each}

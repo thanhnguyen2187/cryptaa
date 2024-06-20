@@ -1,14 +1,21 @@
-import { assign, fromPromise, setup } from "xstate";
+import {
+  assign,
+  type EventObject,
+  fromCallback,
+  fromPromise,
+  setup,
+} from "xstate";
 import type { NoteDisplay } from "../data/schema-triplit";
 import {
   createEmptyNoteDisplay,
-  encryptNote,
+  encryptNote, noteDbToDisplay,
 } from "../data/data-transformation";
 import type { TriplitClient } from "@triplit/client";
 import {
-  noteCount,
+  noteCount, notesCountSubscribe,
   notesDelete,
   notesRead,
+  notesSubscribe,
   notesUpsert,
 } from "../data/queries-triplit";
 import type { ToastManager } from "$lib/toast-manager";
@@ -17,6 +24,7 @@ import {
   logicModalConfirm,
   logicModalNote,
   logicModalPassword,
+  logicModalSettings,
 } from "$lib/logic-modal";
 import type { Modal, ModalStore } from "@skeletonlabs/skeleton";
 import { aesGcmDecrypt } from "../data/encryption";
@@ -113,6 +121,41 @@ export const logicNotesDelete = fromPromise(
   },
 );
 
+export const logicNotesSubscribe = fromCallback<
+  EventObject,
+  { client: TriplitClient; limit: number; keyword: string; tags: Set<string> }
+>(({ sendBack, input }) => {
+  const fnUnsubscribe = notesSubscribe(
+    input.client,
+    input.limit,
+    input.keyword,
+    input.tags,
+    (results) => {
+      const noteDbs = Array.from(results.values());
+      const noteDisplays = noteDbs.map(noteDbToDisplay);
+      sendBack({type: "SetNotes", value: noteDisplays});
+    },
+    (error) => {},
+  );
+  return fnUnsubscribe;
+});
+
+export const logicNotesCountSubscribe = fromCallback<
+  EventObject,
+  { client: TriplitClient; limit: number; keyword: string; tags: Set<string> }
+>(({ sendBack, input }) => {
+  const fnUnsubscribe = notesCountSubscribe(
+    input.client,
+    input.keyword,
+    input.tags,
+    (count) => {
+      sendBack({type: "SetNotesTotalCount", value: count});
+    },
+    (error) => {},
+  );
+  return fnUnsubscribe;
+});
+
 export const logicRegisterSW = fromPromise(registerServiceWorker);
 
 export type Context = {
@@ -149,6 +192,8 @@ export const machine = setup({
       | { type: "Decrypt"; note: NoteDisplay }
       | { type: "Encrypt"; note: NoteDisplay }
       | { type: "Clear"; note: NoteDisplay }
+      | { type: "SetNotes"; value: NoteDisplay[] }
+      | { type: "SetNotesTotalCount"; value: number }
       | { type: "Yes" }
       | { type: "No" }
       | { type: "Reload" }
@@ -232,9 +277,9 @@ export const machine = setup({
     ServiceWorkerInitializing: {
       invoke: {
         src: logicRegisterSW,
-        onDone: { target: "DataLoading" },
+        onDone: { target: "Idling" },
         onError: {
-          target: "DataLoading",
+          target: "Idling",
           actions: ({ context, event }) => {
             context.toastManager.warn(
               "Error happened registering service worker",
@@ -321,7 +366,7 @@ export const machine = setup({
           note: context.note,
         }),
         onDone: {
-          target: "DataLoading",
+          target: "Idling",
         },
         onError: {
           target: "DataError",
@@ -444,7 +489,7 @@ export const machine = setup({
           noteId: context.note.id,
         }),
         onDone: {
-          target: "DataLoading",
+          target: "Idling",
         },
         onError: {
           target: "DataError",
@@ -459,7 +504,7 @@ export const machine = setup({
       type: "parallel",
       states: {
         Items: {
-          initial: "Transient",
+          // initial: "Transient",
           on: {
             ModalOpenNoteNew: {
               target: "#App.Idling.Modal.Note",
@@ -472,6 +517,10 @@ export const machine = setup({
               actions: assign({
                 note: ({ event }) => event.note,
               }),
+            },
+            ModalOpenSettings: {
+              target: "#App.Idling.Modal.Settings",
+              actions: assign({}),
             },
             Reload: {
               target: "#App.DataLoading",
@@ -501,21 +550,21 @@ export const machine = setup({
               target: "#App.Idling.Modal.PasswordClear",
             },
           },
-          states: {
-            Transient: {
-              always: [
-                {
-                  guard: "IsNotesEmpty",
-                  target: "Empty",
-                },
-                {
-                  target: "Filled",
-                },
-              ],
-            },
-            Empty: {},
-            Filled: {},
-          },
+          // states: {
+          //   Transient: {
+          //     always: [
+          //       {
+          //         guard: "IsNotesEmpty",
+          //         target: "Empty",
+          //       },
+          //       {
+          //         target: "Filled",
+          //       },
+          //     ],
+          //   },
+          //   Empty: {},
+          //   Filled: {},
+          // },
         },
         Modal: {
           initial: "None",
@@ -614,6 +663,52 @@ export const machine = setup({
                   modalStore: context.modalStore,
                 }),
               },
+            },
+            Settings: {
+              invoke: {
+                src: logicModalSettings,
+                input: ({ context }) => ({
+                  modalStore: context.modalStore,
+                }),
+              },
+            },
+          },
+        },
+        SubscribingNotes: {
+          type: "parallel",
+          states: {
+            Notes: {
+              invoke: {
+                src: logicNotesSubscribe,
+                input: ({ context }) => ({
+                  client: context.client,
+                  limit: context.limit,
+                  keyword: context.keyword,
+                  tags: context.tags,
+                }),
+              },
+            },
+            Count: {
+              invoke: {
+                src: logicNotesCountSubscribe,
+                input: ({ context }) => ({
+                  client: context.client,
+                  keyword: context.keyword,
+                  tags: context.tags,
+                }),
+              },
+            }
+          },
+          on: {
+            SetNotes: {
+              actions: assign({
+                notes: ({ event }) => event.value,
+              }),
+            },
+            SetNotesTotalCount: {
+              actions: assign({
+                notesTotalCount: ({ event }) => event.value,
+              }),
             },
           },
         },

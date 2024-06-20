@@ -1,6 +1,7 @@
 import type { TriplitClient } from "@triplit/client";
 import { or } from "@triplit/db";
-import type { NoteDisplay } from "./schema-triplit";
+import type { Note, NoteDisplay } from "./schema-triplit";
+import { noteDbToDisplay } from './data-transformation';
 
 export async function notesRead(
   // biome-ignore lint/suspicious/noExplicitAny: <explanation>
@@ -25,15 +26,93 @@ export async function notesRead(
     policy: "local-and-remote",
   });
   const notes = Array.from(result.values());
-  const noteDisplays: NoteDisplay[] = notes.map((note) => ({
-    ...note,
-    encryptionState: note.encrypted ? "encrypted" : "none",
-    tags: Array.from((note.tags ?? new Set()).keys())
-      // @ts-ignore
-      // .map((tag: NoteTag) => tag.tagText)
-      .sort(),
-  }));
+  const noteDisplays: NoteDisplay[] = notes.map(noteDbToDisplay);
   return noteDisplays;
+}
+
+export function notesSubscribe(
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+  client: TriplitClient<any>,
+  limit: number,
+  keyword: string,
+  tags: Set<string>,
+  fnHandleSuccess: (results: Map<string, Note>) => void,
+  fnHandleError: (error: unknown) => void,
+): () => void {
+  let query = client.query("notes").order("createdAt", "DESC").limit(limit);
+  if (keyword !== "") {
+    query = query.where(
+      or([
+        ["title", "like", `%${keyword}%`],
+        ["text", "like", `%${keyword}%`],
+      ]),
+    );
+  }
+  for (const tag of tags) {
+    query = query.where("tags", "has", tag);
+  }
+  const fnUnsubscribe = client.subscribe(
+    query.build(),
+    (results, info) => {
+      fnHandleSuccess(results);
+    },
+    (error) => {
+      fnHandleError(error);
+    }
+  )
+  // const notes = Array.from(result.values());
+  // const noteDisplays: NoteDisplay[] = notes.map((note) => ({
+  //   ...note,
+  //   encryptionState: note.encrypted ? "encrypted" : "none",
+  //   tags: Array.from((note.tags ?? new Set()).keys())
+  //   // @ts-ignore
+  //   // .map((tag: NoteTag) => tag.tagText)
+  //   .sort(),
+  // }));
+  // return noteDisplays;
+  return fnUnsubscribe;
+}
+
+export function notesCountSubscribe(
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+  client: TriplitClient<any>,
+  keyword: string,
+  tags: Set<string>,
+  fnHandleSuccess: (count: number) => void,
+  fnHandleError: (error: unknown) => void,
+): () => void {
+  let query = client.query("notes").select(["id"]);
+  if (keyword !== "") {
+    query = query.where(
+      or([
+        ["title", "like", `%${keyword}%`],
+        ["text", "like", `%${keyword}%`],
+      ]),
+    );
+  }
+  for (const tag of tags) {
+    query = query.where("tags", "has", tag);
+  }
+  const fnUnsubscribe = client.subscribe(
+    query.build(),
+    (results, info) => {
+      fnHandleSuccess(results.size);
+    },
+    (error) => {
+      fnHandleError(error);
+    }
+  )
+  // const notes = Array.from(result.values());
+  // const noteDisplays: NoteDisplay[] = notes.map((note) => ({
+  //   ...note,
+  //   encryptionState: note.encrypted ? "encrypted" : "none",
+  //   tags: Array.from((note.tags ?? new Set()).keys())
+  //   // @ts-ignore
+  //   // .map((tag: NoteTag) => tag.tagText)
+  //   .sort(),
+  // }));
+  // return noteDisplays;
+  return fnUnsubscribe;
 }
 
 export async function noteCount(
@@ -42,7 +121,7 @@ export async function noteCount(
   keyword: string,
   tags: Set<string>,
 ) {
-  let query = client.query("notes");
+  let query = client.query("notes").select(["id"]);
   if (keyword !== "") {
     query = query.where(
       or([

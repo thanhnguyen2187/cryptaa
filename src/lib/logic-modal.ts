@@ -6,6 +6,7 @@ import ModalEncryption from '../components/ModalEncryption.svelte';
 import type { TriplitClient } from "@triplit/client";
 import { notesUpsert } from "../data/queries-triplit";
 import { encryptNote } from "../data/data-transformation";
+import ModalSettings from '../components/ModalSettings.svelte';
 
 export const logicModalNote = fromCallback<
   EventObject,
@@ -101,6 +102,28 @@ export const logicModalConfirm = fromCallback<
       } else {
         sendBack({ type: "No" });
       }
+    },
+  });
+});
+
+export const logicModalSettings = fromCallback<
+  EventObject,
+  {
+    modalStore?: ModalStore;
+  }
+>(({ sendBack, input }) => {
+  if (!input.modalStore) {
+    console.error("logicModalSettings: unreachable code");
+    return;
+  }
+  input.modalStore.trigger({
+    type: "component",
+    component: {
+      ref: ModalSettings,
+      props: {},
+    },
+    response: () => {
+      sendBack({ type: "ModalClosed" });
     },
   });
 });
