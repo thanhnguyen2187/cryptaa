@@ -8,7 +8,7 @@
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-    "server": "triplit dev --schemaPath src/data/schema-triplit.ts --dbPort 5432 --storage memory",
+    "server": "triplit dev --schemaPath src/data/schema-triplit.ts --dbPort ${PORT:=5432} --storage memory",
     "test": "vitest"
   },
   "devDependencies": {
