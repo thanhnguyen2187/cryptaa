@@ -21,7 +21,7 @@ export type NoteDisplay = {
   title: string;
   text: string;
   tags: string[];
-  encrypted: boolean;
+  encryptionState: "none" | "encrypted" | "decrypted";
   createdAt: Date;
   updatedAt: Date;
 };

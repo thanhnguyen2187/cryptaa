@@ -9,7 +9,7 @@ import { formatDate } from '$lib/date';
 // don't, a harmless warning would be raised.
 export let parent: unknown;
 export let note: NoteDisplay;
-export let fnSubmit: () => void;
+export let fnSave: () => void;
 export let fnEncryptAndSave: () => void;
 export let fnCancel: () => void;
 </script>
@@ -28,7 +28,7 @@ export let fnCancel: () => void;
         class="input"
         spellcheck="false"
         bind:value={note.title}
-        disabled={note.encrypted}
+        disabled={note.encryptionState === "encrypted"}
       />
     </label>
     <label class="label">
@@ -38,7 +38,7 @@ export let fnCancel: () => void;
         rows="8"
         spellcheck="false"
         bind:value={note.text}
-        disabled={note.encrypted}
+        disabled={note.encryptionState === "encrypted"}
       ></textarea>
     </label>
     <label>
@@ -46,7 +46,7 @@ export let fnCancel: () => void;
       <InputChip
         name="tags"
         bind:value={note.tags}
-        disabled={note.encrypted}
+        disabled={note.encryptionState === "encrypted"}
       />
     </label>
     <label class="label">
@@ -77,15 +77,15 @@ export let fnCancel: () => void;
   <footer class="card-footer flex flex-row-reverse gap-2">
     <button
       class="btn variant-filled"
-      on:click={fnSubmit}
-      disabled={note.encrypted}
+      on:click={fnSave}
+      disabled={note.encryptionState === "encrypted"}
     >
       Save
     </button>
     <button
       class="btn variant-soft-secondary"
       on:click={fnEncryptAndSave}
-      disabled={note.encrypted}
+      disabled={note.encryptionState === "encrypted"}
     >
       Encrypt & Save
     </button>

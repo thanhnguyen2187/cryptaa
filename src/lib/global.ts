@@ -3,6 +3,13 @@ import { schema } from "../data/schema-triplit";
 import { createActor } from "xstate";
 import { machine as machineApp } from "$lib/machine-app";
 import { machine as machineSettings } from "$lib/machine-settings";
+import {
+  createToastManagerDummy,
+  createToastManagerSkeleton,
+} from "$lib/toast-manager";
+import { getToastStore } from "@skeletonlabs/skeleton";
+import { createModalManagerDummy } from "$lib/modal-manager";
+import { notesSubscribe } from "../data/queries-triplit";
 
 const globalClientOptions = JSON.parse(
   localStorage.getItem("cryptaa.globalClientOptions") ??
@@ -13,8 +20,13 @@ export const globalClient = new TriplitClient({
   storage: "indexeddb",
   ...globalClientOptions,
 });
-export const globalActorApp = createActor(machineApp);
-globalActorApp.start();
+export const globalAppActor = createActor(machineApp, {
+  input: {
+    client: globalClient,
+    toastManager: createToastManagerDummy(),
+  },
+});
+globalAppActor.start();
 
 export const globalActorSettings = createActor(machineSettings, {
   input: {

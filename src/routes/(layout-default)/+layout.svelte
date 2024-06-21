@@ -1,86 +1,56 @@
 <script lang="ts">
 import "../../app.postcss";
-import autoAnimate from "@formkit/auto-animate";
 import {
-	AppShell,
-	AppBar,
-	storePopup,
-	initializeStores,
-	Toast,
-	Modal,
+  AppShell,
+  AppBar,
+  storePopup,
+  initializeStores,
+  Toast,
+  Modal,
+  getToastStore,
+  getModalStore,
 } from "@skeletonlabs/skeleton";
 import { Fa } from "svelte-fa";
 import { faSearch } from "@fortawesome/free-solid-svg-icons";
 import {
-	computePosition,
-	autoUpdate,
-	flip,
-	shift,
-	offset,
-	arrow,
+  computePosition,
+  autoUpdate,
+  flip,
+  shift,
+  offset,
+  arrow,
 } from "@floating-ui/dom";
-import { globalActorApp, globalClient } from '$lib/global';
-import { useSelector } from '@xstate/svelte';
-import { noteCount, notesRead } from '../../data/queries-triplit';
-import { derived } from 'svelte/store';
-
-// Highlight JS
-// import hljs from "highlight.js/lib/core";
-// import "highlight.js/styles/github-dark.css";
-// import { storeHighlightJs } from "@skeletonlabs/skeleton";
-// import xml from "highlight.js/lib/languages/xml"; // for HTML
-// import css from "highlight.js/lib/languages/css";
-// import javascript from "highlight.js/lib/languages/javascript";
-// import typescript from "highlight.js/lib/languages/typescript";
-
-// hljs.registerLanguage("xml", xml); // for HTML
-// hljs.registerLanguage("css", css);
-// hljs.registerLanguage("javascript", javascript);
-// hljs.registerLanguage("typescript", typescript);
-// storeHighlightJs.set(hljs);
+import { globalAppActor, globalClient } from "$lib/global";
+import { useSelector } from "@xstate/svelte";
+import { noteCount, notesRead } from "../../data/queries-triplit";
+import { derived } from "svelte/store";
+import { createToastManagerSkeleton } from "$lib/toast-manager";
+import { createModalManagerSkeleton } from "$lib/modal-manager";
 
 // Floating UI for Popups
 initializeStores();
 storePopup.set({ computePosition, autoUpdate, flip, shift, offset, arrow });
 
-const tags = useSelector(globalActorApp, (state) => state.context.searchTags);
-const tagsArray = derived(tags, (tags) => Array.from(tags.values()));
-const currentState = useSelector(globalActorApp, (state) => state);
-const appSend = globalActorApp.send;
+const globalToastStore = getToastStore();
+const globalModalStore = getModalStore();
+const globalToastManager = createToastManagerSkeleton(globalToastStore);
+globalAppActor.send({ type: "SetToastManager", value: globalToastManager });
+globalAppActor.send({ type: "SetModalStore", value: globalModalStore });
 
-async function itemsLoad() {
-	try {
-		const notes = await notesRead(
-			globalClient,
-			$currentState.context.limit,
-			$currentState.context.searchKeyword,
-			$tags,
-		);
-		const count = await noteCount(
-			globalClient,
-			$currentState.context.searchKeyword,
-			$tags,
-		);
-		appSend({ type: "Loaded", notes, totalCount: count });
-	} catch (e) {
-		appSend({ type: "FailedData" });
-		console.error(e);
-	}
-}
+const tagsArray = useSelector(globalAppActor, (snapshot) =>
+  Array.from(snapshot.context.tags),
+);
 
-function removeTag(tag: string) {
-	appSend({ type: "SearchTagRemove", tag });
-	itemsLoad();
+function deleteTag(tag: string) {
+  globalAppActor.send({ type: "TagDelete", tag });
 }
 
 function setKeyword(keyword: string) {
-	appSend({ type: "SearchKeywordSet", keyword });
-	itemsLoad();
 }
 
-function handleSearchChange(e: Event) {
-	const keyword = (e.target as HTMLInputElement).value;
-	setKeyword(keyword);
+function handleKeywordChange(e: Event) {
+  const keyword = (e.target as HTMLInputElement).value;
+  globalAppActor.send({ type: "SetKeyword", value: keyword });
 }
 </script>
 
@@ -88,43 +58,43 @@ function handleSearchChange(e: Event) {
 <Modal/>
 <!-- App Shell -->
 <AppShell>
-	<svelte:fragment slot="header">
-		<!-- App Bar -->
-		<AppBar slotDefault="place-self-center">
-			<svelte:fragment slot="lead">
-				<strong class="hidden md:block text-xl uppercase">Cryptaa</strong>
-			</svelte:fragment>
-			<div
-				class="input-group input-group-divider"
-				class:grid-cols-[auto_1fr]={$tags.size === 0}
-				class:grid-cols-[auto_1fr_auto]={$tags.size !== 0}
-		 	>
+  <svelte:fragment slot="header">
+    <!-- App Bar -->
+    <AppBar slotDefault="place-self-center">
+      <svelte:fragment slot="lead">
+        <strong class="hidden md:block text-xl uppercase">Cryptaa</strong>
+      </svelte:fragment>
+      <div
+        class="input-group input-group-divider"
+        class:grid-cols-[auto_1fr]={$tagsArray.length === 0}
+        class:grid-cols-[auto_1fr_auto]={$tagsArray.length > 0}
+      >
         <div class="input-group-shim">
-					<Fa icon={faSearch} />
+          <Fa icon={faSearch} />
         </div>
         <input
           type="text"
           placeholder="Search..."
-					on:change={handleSearchChange}
+          on:change={handleKeywordChange}
         />
-				<div
-					class="flex gap-1"
-				>
-					{#each $tagsArray as tag}
-						<button
-							class="chip variant-ghost-secondary"
-							on:click={() => removeTag(tag)}
-						>
-							{tag}
-						</button>
-					{/each}
-				</div>
+        <div
+          class="flex gap-1"
+        >
+          {#each $tagsArray as tag}
+            <button
+              class="chip variant-ghost-secondary"
+              on:click={() => deleteTag(tag)}
+            >
+              {tag}
+            </button>
+          {/each}
+        </div>
       </div>
-			<svelte:fragment slot="trail">
-				<strong class="text-xl uppercase invisible">Crypta</strong>
-			</svelte:fragment>
-		</AppBar>
-	</svelte:fragment>
-	<!-- Page Route Content -->
-	<slot />
+      <svelte:fragment slot="trail">
+        <strong class="text-xl uppercase invisible">Crypta</strong>
+      </svelte:fragment>
+    </AppBar>
+  </svelte:fragment>
+  <!-- Page Route Content -->
+  <slot />
 </AppShell>
