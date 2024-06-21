@@ -129,7 +129,45 @@ python -m http.server
 
 ## Server Deployment
 
-TBA
+- Clone the repository on the machine that you want to deploy the server. Make
+  sure that `npm` is ready and the dependencies are installed (look at the
+  section for "Development").
+
+- Set your environment variables at `.env`:
+
+```
+TRIPLIT_JWT_SECRET=super-secret
+TRIPLIT_PROJECT_ID=cryptaa-server
+```
+
+- Start the server:
+
+```shell
+# to run the server at port 5432
+npm run server
+# or specify another port
+PORT=8888 npm run server
+```
+
+- Note the service token down somewhere as you'll need them for synchronization
+  between different clients:
+
+```
+Service Token
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ4LXRyaXBsaXQtdG9rZW4[...]
+```
+
+- A good security practice is to "hide" the port from public access (does not
+  allow access to `http://<your-ip>:5432`), and use a HTTPS reverse proxy to it
+  (allow access to `https://cryptaa-server.<your-domain>`). Feel free to use
+  Nginx or Caddy or anything that you're comfortable with.
+
+- Demo server's credentials:
+
+```
+URL: https://cryptaa-server-demo.nguyenhuythanh.com
+Token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ4LXRyaXBsaXQtdG9rZW4tdHlwZSI6InNlY3JldCIsIngtdHJpcGxpdC1wcm9qZWN0LWlkIjoiY3J5cHRhYS1zZXJ2ZXIifQ.IDJB0XN3CjpBbWJxyGpHKbPU6rTQkndsFZYF2h4WEto
+```
 
 ## Miscellanies
 
