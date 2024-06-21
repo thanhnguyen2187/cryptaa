@@ -4,6 +4,7 @@ import { useSelector } from "@xstate/svelte";
 import NoteList from "../../components/NoteList.svelte";
 import { faAdd, faGear } from "@fortawesome/free-solid-svg-icons";
 import { Fa } from "svelte-fa";
+import { ProgressRadial } from '@skeletonlabs/skeleton';
 
 const globalAppState = useSelector(globalAppActor, (snapshot) => snapshot);
 
@@ -16,7 +17,6 @@ function sendModalOpenSettings() {
 }
 </script>
 
-<div>{JSON.stringify($globalAppState.value)}</div>
 {#if $globalAppState.matches("Idling")}
   <button
     class="btn-icon variant-filled-secondary absolute bottom-6 left-6"
@@ -31,8 +31,11 @@ function sendModalOpenSettings() {
     <Fa icon={faAdd} size="lg"/>
   </button>
 {/if}
+
 <div class="container mt-4 mx-auto flex justify-center items-center">
-  {#if $globalAppState.matches("Idling")}
+  {#if $globalAppState.matches("ServiceWorkerInitializing")}
+    <ProgressRadial value={undefined} />
+  {:else if $globalAppState.matches("Idling")}
     {#if $globalAppState.context.notes.length === 0}
       <p>
         There is nothing here for now. <br/>
@@ -41,6 +44,11 @@ function sendModalOpenSettings() {
     {:else}
       <NoteList notes={$globalAppState.context.notes}/>
     {/if}
+  {:else if $globalAppState.matches("DataError")}
+    <p>
+      Data error happened. <br/>
+      Please try clearing your browser's data and reload.
+    </p>
   {/if}
 </div>
 

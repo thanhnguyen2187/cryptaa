@@ -507,7 +507,6 @@ export const machine = setup({
       type: "parallel",
       states: {
         Items: {
-          // initial: "Transient",
           on: {
             ModalOpenNoteNew: {
               target: "#App.Idling.Modal.Note",
@@ -526,7 +525,7 @@ export const machine = setup({
               actions: assign({}),
             },
             Reload: {
-              target: "#App.DataLoading",
+              target: "#App.Idling",
             },
             Delete: {
               target: "#App.Idling.Modal.DeleteConfirm",
@@ -577,21 +576,6 @@ export const machine = setup({
               target: "#App.Idling",
             }
           },
-          // states: {
-          //   Transient: {
-          //     always: [
-          //       {
-          //         guard: "IsNotesEmpty",
-          //         target: "Empty",
-          //       },
-          //       {
-          //         target: "Filled",
-          //       },
-          //     ],
-          //   },
-          //   Empty: {},
-          //   Filled: {},
-          // },
         },
         Modal: {
           initial: "None",
