@@ -24,6 +24,10 @@ Mobile version:
 
 ![](./imgs/2.png)
 
+Synchronization:
+
+![](./imgs/3.gif)
+
 ---
 
 </details>
@@ -53,8 +57,8 @@ technologies.</sup>
 
 ## How It Works
 
-Cryptaa uses [Triplit](https://www.triplit.dev/) as its database. Triplit runs
-in your browser (persisting to IndexedDB), and can be run within an independent
+Cryptaa uses [Triplit](https://www.triplit.dev/) under the hood. Triplit runs in
+your browser (persisting to IndexedDB), and can be run within an independent
 server (persisting to SQLite) as well.
 
 ```mermaid
