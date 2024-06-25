@@ -12,6 +12,12 @@ export let note: NoteDisplay;
 export let fnSave: () => void;
 export let fnEncryptAndSave: () => void;
 export let fnCancel: () => void;
+
+function handleKeyDown(e: KeyboardEvent) {
+  if (e.key === "Enter") {
+    fnSave();
+  }
+}
 </script>
 
 <div class="card w-modal relative">
@@ -28,6 +34,7 @@ export let fnCancel: () => void;
         class="input"
         spellcheck="false"
         bind:value={note.title}
+        on:keydown={handleKeyDown}
         disabled={note.encryptionState === "encrypted"}
       />
     </label>

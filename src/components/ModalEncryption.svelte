@@ -10,6 +10,12 @@ export let fnSubmit: (password: string) => void;
 export let fnCancel: () => void;
 
 let password = "";
+
+function handleKeyDown(e: KeyboardEvent) {
+  if (e.key === "Enter") {
+    fnSubmit(password);
+  }
+}
 </script>
 
 <div class="card w-modal relative">
@@ -26,6 +32,7 @@ let password = "";
         class="input"
         spellcheck="false"
         type="password"
+        on:keydown={handleKeyDown}
         bind:value={password}
       />
     </label>
