@@ -25,6 +25,7 @@ import {
   logicModalNote,
   logicModalPassword,
   logicModalSettings,
+  logicModalFilter,
 } from "$lib/logic-modal";
 import type { Modal, ModalStore } from "@skeletonlabs/skeleton";
 import { aesGcmDecrypt } from "../data/encryption";
@@ -162,7 +163,6 @@ export type Context = {
   client: TriplitClient;
   notes: NoteDisplay[];
   note: NoteDisplay;
-  noteEncrypting: boolean;
   password: string;
   limit: number;
   notesTotalCount: number;
@@ -202,6 +202,7 @@ export const machine = setup({
       | { type: "Reload" }
       | { type: "ModalOpenNoteNew" }
       | { type: "ModalOpenNote"; note: NoteDisplay }
+      | { type: "ModalOpenFilter" }
       | { type: "ModalClosed" }
       | { type: "Check" }
       | { type: "Cancel" }
@@ -247,7 +248,6 @@ export const machine = setup({
   context: ({ input }) => ({
     notes: [],
     note: createEmptyNoteDisplay(),
-    noteEncrypting: false,
     password: "",
     notesTotalCount: 0,
     limit: 10,
@@ -522,7 +522,9 @@ export const machine = setup({
             },
             ModalOpenSettings: {
               target: "#App.Idling.Modal.Settings",
-              actions: assign({}),
+            },
+            ModalOpenFilter: {
+              target: "#App.Idling.Modal.Filter",
             },
             Reload: {
               target: "#App.Idling",
@@ -564,7 +566,7 @@ export const machine = setup({
               actions: assign({
                 tags: ({context, event}) => {
                   context.tags.delete(event.tag);
-                  return new Set(...context.tags);
+                  return new Set(context.tags);
                 },
               }),
               target: "#App.Idling",
@@ -591,7 +593,6 @@ export const machine = setup({
                 Save: {
                   actions: assign({
                     note: ({ event }) => event.note,
-                    noteEncrypting: () => false,
                   }),
                   target: "#App.DataUpserting",
                 },
@@ -678,6 +679,14 @@ export const machine = setup({
             Settings: {
               invoke: {
                 src: logicModalSettings,
+                input: ({ context }) => ({
+                  modalStore: context.modalStore,
+                }),
+              },
+            },
+            Filter: {
+              invoke: {
+                src: logicModalFilter,
                 input: ({ context }) => ({
                   modalStore: context.modalStore,
                 }),

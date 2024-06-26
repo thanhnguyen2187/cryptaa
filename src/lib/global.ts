@@ -8,7 +8,6 @@ import {
   createToastManagerSkeleton,
 } from "$lib/toast-manager";
 import { getToastStore } from "@skeletonlabs/skeleton";
-import { createModalManagerDummy } from "$lib/modal-manager";
 import { notesSubscribe } from "../data/queries-triplit";
 
 const globalClientOptions = JSON.parse(

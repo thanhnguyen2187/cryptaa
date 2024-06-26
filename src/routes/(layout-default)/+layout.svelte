@@ -11,7 +11,14 @@ import {
   getModalStore,
 } from "@skeletonlabs/skeleton";
 import { Fa } from "svelte-fa";
-import { faEye, faGear, faSearch, faSort, faSortAlphaAsc } from "@fortawesome/free-solid-svg-icons";
+import {
+  faAnchor,
+  faEye, faFilter,
+  faGear,
+  faSearch,
+  faSort,
+  faSortAlphaAsc,
+} from "@fortawesome/free-solid-svg-icons";
 import {
   computePosition,
   autoUpdate,
@@ -25,7 +32,6 @@ import { useSelector } from "@xstate/svelte";
 import { noteCount, notesRead } from "../../data/queries-triplit";
 import { derived } from "svelte/store";
 import { createToastManagerSkeleton } from "$lib/toast-manager";
-import { createModalManagerSkeleton } from "$lib/modal-manager";
 
 // Floating UI for Popups
 initializeStores();
@@ -45,12 +51,15 @@ function deleteTag(tag: string) {
   globalAppActor.send({ type: "TagDelete", tag });
 }
 
-function setKeyword(keyword: string) {
-}
+function setKeyword(keyword: string) {}
 
 function handleKeywordChange(e: Event) {
   const keyword = (e.target as HTMLInputElement).value;
   globalAppActor.send({ type: "SetKeyword", value: keyword });
+}
+
+function openFilter() {
+  globalAppActor.send({ type: "ModalOpenFilter" });
 }
 
 let searchHover = false;
@@ -66,41 +75,44 @@ let searchHover = false;
       <svelte:fragment slot="lead">
         <strong class="hidden md:block text-xl uppercase">Cryptaa</strong>
       </svelte:fragment>
-      <div
-        class="input-group input-group-divider grid-cols-[auto_1fr_auto]"
-      >
+      <div class="flex gap-2">
         <div
-          class="input-group-shim w-12"
-          on:mouseenter={() => searchHover = true}
-          on:mouseleave={() => searchHover = false}
-          role="button"
-          tabindex="-1"
+          class="input-group input-group-divider grid-cols-[auto_1fr_auto]"
         >
-          {#if !searchHover}
+          <div
+            class="input-group-shim w-12"
+            role="button"
+            tabindex="-1"
+          >
             <Fa icon={faSearch} />
-          {:else}
-            <Fa icon={faSort} />
-          {/if}
+          </div>
+          <input
+            type="text"
+            placeholder="Search..."
+            on:change={handleKeywordChange}
+          />
+          <div
+            class="flex gap-1"
+            class:invisible={$tagsArray.length === 0}
+          >
+            {#each $tagsArray as tag}
+              <button
+                class="chip variant-ghost-secondary"
+                on:click={() => deleteTag(tag)}
+              >
+                {tag}
+              </button>
+            {/each}
+          </div>
         </div>
-        <input
-          type="text"
-          placeholder="Search..."
-          on:change={handleKeywordChange}
-        />
-        <div
-          class="flex gap-1"
-          class:invisible={$tagsArray.length === 0}
+        <button
+          class="btn-icon btn-icon-lg variant-soft-secondary"
+          on:click={openFilter}
         >
-          {#each $tagsArray as tag}
-            <button
-              class="chip variant-ghost-secondary"
-              on:click={() => deleteTag(tag)}
-            >
-              {tag}
-            </button>
-          {/each}
-        </div>
+          <Fa icon={faFilter} />
+        </button>
       </div>
+
       <svelte:fragment slot="trail">
         <strong class="text-xl uppercase invisible">Cryptaa</strong>
       </svelte:fragment>
