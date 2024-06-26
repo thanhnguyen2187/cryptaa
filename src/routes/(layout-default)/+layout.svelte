@@ -44,7 +44,7 @@ globalAppActor.send({ type: "SetToastManager", value: globalToastManager });
 globalAppActor.send({ type: "SetModalStore", value: globalModalStore });
 
 const tagsArray = useSelector(globalAppActor, (snapshot) =>
-  Array.from(snapshot.context.tags),
+  Array.from(snapshot.context.filterData.tagsInclude),
 );
 
 function deleteTag(tag: string) {
