@@ -8,11 +8,13 @@ import {
 import type { NoteDisplay } from "../data/schema-triplit";
 import {
   createEmptyNoteDisplay,
-  encryptNote, noteDbToDisplay,
+  encryptNote,
+  noteDbToDisplay,
 } from "../data/data-transformation";
 import type { TriplitClient } from "@triplit/client";
 import {
-  noteCount, notesCountSubscribe,
+  noteCount,
+  notesCountSubscribe,
   notesDelete,
   notesRead,
   notesSubscribe,
@@ -29,6 +31,7 @@ import {
 } from "$lib/logic-modal";
 import type { Modal, ModalStore } from "@skeletonlabs/skeleton";
 import { aesGcmDecrypt } from "../data/encryption";
+import type { FilterData } from "$lib/filter";
 
 export const logicNotesRead = fromPromise(
   async ({
@@ -134,7 +137,7 @@ export const logicNotesSubscribe = fromCallback<
     (results) => {
       const noteDbs = Array.from(results.values());
       const noteDisplays = noteDbs.map(noteDbToDisplay);
-      sendBack({type: "SetNotes", value: noteDisplays});
+      sendBack({ type: "SetNotes", value: noteDisplays });
     },
     (error) => {},
   );
@@ -150,7 +153,7 @@ export const logicNotesCountSubscribe = fromCallback<
     input.keyword,
     input.tags,
     (count) => {
-      sendBack({type: "SetNotesTotalCount", value: count});
+      sendBack({ type: "SetNotesTotalCount", value: count });
     },
     (error) => {},
   );
@@ -166,8 +169,7 @@ export type Context = {
   password: string;
   limit: number;
   notesTotalCount: number;
-  tags: Set<string>;
-  keyword: string;
+  filterData: FilterData;
   toastManager: ToastManager;
   modalStore?: ModalStore;
 };
@@ -175,6 +177,7 @@ export type Context = {
 export type Input = {
   client: TriplitClient;
   toastManager: ToastManager;
+  filterData: FilterData;
 };
 
 export const machine = setup({
@@ -230,7 +233,6 @@ export const machine = setup({
     input: {} as Input,
   },
   guards: {
-    IsNotesEmpty: ({ context }) => context.notes.length === 0,
     IsWrongPassword: (_, params: { error: Error }) =>
       params.error.message === "Decrypt failed",
     IsWrongFormat: (_, params: { error: Error }) =>
@@ -251,8 +253,7 @@ export const machine = setup({
     password: "",
     notesTotalCount: 0,
     limit: 10,
-    tags: new Set(),
-    keyword: "",
+    filterData: input.filterData,
     toastManager: input.toastManager,
     modalStore: undefined,
     client: input.client,
@@ -304,8 +305,8 @@ export const machine = setup({
                 input: ({ context }) => ({
                   client: context.client,
                   limit: context.limit,
-                  keyword: context.keyword,
-                  tags: context.tags,
+                  keyword: context.filterData.keyword,
+                  tags: context.filterData.tagsInclude,
                 }),
                 onDone: {
                   target: "Loaded",
@@ -335,8 +336,8 @@ export const machine = setup({
                 src: logicNotesCount,
                 input: ({ context }) => ({
                   client: context.client,
-                  keyword: context.keyword,
-                  tags: context.tags,
+                  keyword: context.filterData.keyword,
+                  tags: context.filterData.tagsInclude,
                 }),
                 onDone: {
                   target: "Loaded",
@@ -555,28 +556,39 @@ export const machine = setup({
             },
             TagAdd: {
               actions: assign({
-                tags: ({context, event}) => {
-                  context.tags.add(event.tag);
-                  return new Set(context.tags);
+                filterData: ({ context, event }) => {
+                  context.filterData.tagsInclude.add(event.tag);
+                  return {
+                    ...context.filterData,
+                    tagsInclude: new Set(context.filterData.tagsInclude),
+                  };
                 },
               }),
               target: "#App.Idling",
             },
             TagDelete: {
               actions: assign({
-                tags: ({context, event}) => {
-                  context.tags.delete(event.tag);
-                  return new Set(context.tags);
+                filterData: ({ context, event }) => {
+                  context.filterData.tagsInclude.delete(event.tag);
+                  return {
+                    ...context.filterData,
+                    tagsInclude: new Set(context.filterData.tagsInclude),
+                  };
                 },
               }),
               target: "#App.Idling",
             },
             SetKeyword: {
               actions: assign({
-                keyword: ({event}) => event.value,
+                filterData: ({ event, context }) => {
+                  return {
+                    ...context.filterData,
+                    keyword: event.value,
+                  };
+                },
               }),
               target: "#App.Idling",
-            }
+            },
           },
         },
         Modal: {
@@ -703,8 +715,8 @@ export const machine = setup({
                 input: ({ context }) => ({
                   client: context.client,
                   limit: context.limit,
-                  keyword: context.keyword,
-                  tags: context.tags,
+                  keyword: context.filterData.keyword,
+                  tags: context.filterData.tagsInclude,
                 }),
               },
             },
@@ -713,11 +725,11 @@ export const machine = setup({
                 src: logicNotesCountSubscribe,
                 input: ({ context }) => ({
                   client: context.client,
-                  keyword: context.keyword,
-                  tags: context.tags,
+                  keyword: context.filterData.keyword,
+                  tags: context.filterData.tagsInclude,
                 }),
               },
-            }
+            },
           },
           on: {
             SetNotes: {

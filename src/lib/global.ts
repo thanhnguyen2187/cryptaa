@@ -3,12 +3,8 @@ import { schema } from "../data/schema-triplit";
 import { createActor } from "xstate";
 import { machine as machineApp } from "$lib/machine-app";
 import { machine as machineSettings } from "$lib/machine-settings";
-import {
-  createToastManagerDummy,
-  createToastManagerSkeleton,
-} from "$lib/toast-manager";
-import { getToastStore } from "@skeletonlabs/skeleton";
-import { notesSubscribe } from "../data/queries-triplit";
+import { createToastManagerDummy } from "$lib/toast-manager";
+import { readFilterData } from '$lib/filter';
 
 const globalClientOptions = JSON.parse(
   localStorage.getItem("cryptaa.globalClientOptions") ??
@@ -23,6 +19,7 @@ export const globalAppActor = createActor(machineApp, {
   input: {
     client: globalClient,
     toastManager: createToastManagerDummy(),
+    filterData: readFilterData(),
   },
 });
 globalAppActor.start();
