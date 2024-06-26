@@ -20,11 +20,18 @@ import { derived } from "svelte/store";
 const snapshot = useSelector(globalAppActor, (state) => state);
 const tagsInclude = useSelector(globalAppActor, (state) => state.context.filterData.tagsInclude);
 const tagsIncludeArray = Array.from($tagsInclude.keys());
-console.log(tagsIncludeArray);
 
 function handleKeywordChange(e: Event) {
   const keyword = (e.target as HTMLInputElement).value;
   globalAppActor.send({ type: "SetKeyword", value: keyword });
+}
+
+function handleTagAdd(tag: string) {
+  globalAppActor.send({ type: "TagAdd", tag });
+}
+
+function handleTagDelete(tag: string) {
+  globalAppActor.send({ type: "TagDelete", tag });
 }
 </script>
 
@@ -45,6 +52,8 @@ function handleKeywordChange(e: Event) {
         name="tags"
         value={tagsIncludeArray}
         chips="variant-ghost-secondary"
+        on:add={(e) => handleTagAdd(e.detail.chipValue)}
+        on:remove={(e) => handleTagDelete(e.detail.chipValue)}
       />
     </label>
     <label>
