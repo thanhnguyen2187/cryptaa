@@ -1,5 +1,10 @@
 <script lang="ts">
-  import { InputChip, ProgressRadial, Tab, TabGroup } from "@skeletonlabs/skeleton";
+import {
+  InputChip,
+  ProgressRadial,
+  Tab,
+  TabGroup,
+} from "@skeletonlabs/skeleton";
 import Fa from "svelte-fa";
 import {
   faCancel,
@@ -9,11 +14,18 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { useSelector } from "@xstate/svelte";
 import { onDestroy } from "svelte";
-import { globalActorSettings, globalClient } from "$lib/global";
+import { globalAppActor, globalClient } from "$lib/global";
 import { derived } from "svelte/store";
 
-const snapshot = useSelector(globalActorSettings, (state) => state);
-const send = globalActorSettings.send;
+const snapshot = useSelector(globalAppActor, (state) => state);
+const tagsInclude = useSelector(globalAppActor, (state) => state.context.filterData.tagsInclude);
+const tagsIncludeArray = Array.from($tagsInclude.keys());
+console.log(tagsIncludeArray);
+
+function handleKeywordChange(e: Event) {
+  const keyword = (e.target as HTMLInputElement).value;
+  globalAppActor.send({ type: "SetKeyword", value: keyword });
+}
 </script>
 
 <div class="card w-modal-slim">
@@ -23,11 +35,17 @@ const send = globalActorSettings.send;
       <input
         class="input"
         spellcheck="false"
+        value={$snapshot.context.filterData.keyword}
+        on:change={handleKeywordChange}
       />
     </label>
     <label>
       <span>Include tags</span>
-      <InputChip name="tags"/>
+      <InputChip
+        name="tags"
+        value={tagsIncludeArray}
+        chips="variant-ghost-secondary"
+      />
     </label>
     <label>
       <span>Exclude tags</span>

@@ -43,6 +43,7 @@ const globalToastManager = createToastManagerSkeleton(globalToastStore);
 globalAppActor.send({ type: "SetToastManager", value: globalToastManager });
 globalAppActor.send({ type: "SetModalStore", value: globalModalStore });
 
+const snapshot = useSelector(globalAppActor, (snapshot) => snapshot);
 const tagsArray = useSelector(globalAppActor, (snapshot) =>
   Array.from(snapshot.context.filterData.tagsInclude),
 );
@@ -90,6 +91,7 @@ let searchHover = false;
             type="text"
             placeholder="Search..."
             on:change={handleKeywordChange}
+            value={$snapshot.context.filterData.keyword}
           />
           <div
             class="flex gap-1"
@@ -100,7 +102,8 @@ let searchHover = false;
                 class="chip variant-ghost-secondary"
                 on:click={() => deleteTag(tag)}
               >
-                {tag}
+                <span>{tag}</span>
+                <span>✕</span>
               </button>
             {/each}
           </div>
