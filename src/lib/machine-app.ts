@@ -413,9 +413,7 @@ export const machine = setup({
         onDone: {
           target: "Idling",
           actions: assign({
-            note: ({ event }) => {
-              return event.output as NoteDisplay;
-            },
+            note: ({event}) => event.output as NoteDisplay,
           }),
         },
         onError: [
@@ -734,7 +732,20 @@ export const machine = setup({
           on: {
             SetNotes: {
               actions: assign({
-                notes: ({ event }) => event.value,
+                notes: ({ context, event }) => {
+                  const loadedNotes = event.value;
+                  for (const loadedNote of loadedNotes) {
+                    if (
+                      loadedNote.id === context.note.id &&
+                      loadedNote.encryptionState === "encrypted" &&
+                      context.note.encryptionState === "decrypted"
+                    ) {
+                      loadedNote.text = context.note.text;
+                      loadedNote.encryptionState = "decrypted";
+                    }
+                  }
+                  return loadedNotes;
+                },
               }),
             },
             SetNotesTotalCount: {
