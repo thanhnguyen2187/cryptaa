@@ -2,11 +2,11 @@ import type { ModalStore } from "@skeletonlabs/skeleton";
 import { type EventObject, fromCallback } from "xstate";
 import type { NoteDisplay } from "../data/schema-triplit";
 import ModalNote from "../components/ModalNote.svelte";
-import ModalEncryption from '../components/ModalEncryption.svelte';
+import ModalEncryption from "../components/ModalEncryption.svelte";
 import type { TriplitClient } from "@triplit/client";
-import { notesUpsert } from "../data/queries-triplit";
-import { encryptNote } from "../data/data-transformation";
-import ModalSettings from '../components/ModalSettings.svelte';
+import ModalSettings from "../components/ModalSettings.svelte";
+import type { ComponentType } from 'svelte';
+import ModalFilter from '../components/ModalFilter.svelte';
 
 export const logicModalNote = fromCallback<
   EventObject,
@@ -121,6 +121,33 @@ export const logicModalSettings = fromCallback<
     component: {
       ref: ModalSettings,
       props: {},
+    },
+    response: () => {
+      sendBack({ type: "ModalClosed" });
+    },
+  });
+});
+
+export const logicModalFilter = fromCallback<
+  EventObject,
+  {
+    modalStore?: ModalStore;
+  }
+>(({ sendBack, input }) => {
+  if (!input.modalStore) {
+    console.error("logicModalFilter: unreachable code");
+    return;
+  }
+  input.modalStore.trigger({
+    type: "component",
+    component: {
+      ref: ModalFilter,
+      props: {
+        fnClose: () => {
+          input.modalStore?.close();
+          sendBack({ type: "ModalClosed" });
+        }
+      },
     },
     response: () => {
       sendBack({ type: "ModalClosed" });

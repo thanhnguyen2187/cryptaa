@@ -8,11 +8,13 @@ import {
 import type { NoteDisplay } from "../data/schema-triplit";
 import {
   createEmptyNoteDisplay,
-  encryptNote, noteDbToDisplay,
+  encryptNote,
+  noteDbToDisplay,
 } from "../data/data-transformation";
 import type { TriplitClient } from "@triplit/client";
 import {
-  noteCount, notesCountSubscribe,
+  noteCount,
+  notesCountSubscribe,
   notesDelete,
   notesRead,
   notesSubscribe,
@@ -25,9 +27,11 @@ import {
   logicModalNote,
   logicModalPassword,
   logicModalSettings,
+  logicModalFilter,
 } from "$lib/logic-modal";
 import type { Modal, ModalStore } from "@skeletonlabs/skeleton";
 import { aesGcmDecrypt } from "../data/encryption";
+import type { FilterData } from "$lib/filter";
 
 export const logicNotesRead = fromPromise(
   async ({
@@ -123,17 +127,15 @@ export const logicNotesDelete = fromPromise(
 
 export const logicNotesSubscribe = fromCallback<
   EventObject,
-  { client: TriplitClient; limit: number; keyword: string; tags: Set<string> }
+  { client: TriplitClient; filterData: FilterData }
 >(({ sendBack, input }) => {
   const fnUnsubscribe = notesSubscribe(
     input.client,
-    input.limit,
-    input.keyword,
-    input.tags,
+    input.filterData,
     (results) => {
       const noteDbs = Array.from(results.values());
       const noteDisplays = noteDbs.map(noteDbToDisplay);
-      sendBack({type: "SetNotes", value: noteDisplays});
+      sendBack({ type: "SetNotes", value: noteDisplays });
     },
     (error) => {},
   );
@@ -142,14 +144,14 @@ export const logicNotesSubscribe = fromCallback<
 
 export const logicNotesCountSubscribe = fromCallback<
   EventObject,
-  { client: TriplitClient; limit: number; keyword: string; tags: Set<string> }
+  { client: TriplitClient; filterData: FilterData }
 >(({ sendBack, input }) => {
   const fnUnsubscribe = notesCountSubscribe(
     input.client,
-    input.keyword,
-    input.tags,
+    input.filterData.keyword,
+    input.filterData.tagsInclude,
     (count) => {
-      sendBack({type: "SetNotesTotalCount", value: count});
+      sendBack({ type: "SetNotesTotalCount", value: count });
     },
     (error) => {},
   );
@@ -162,12 +164,9 @@ export type Context = {
   client: TriplitClient;
   notes: NoteDisplay[];
   note: NoteDisplay;
-  noteEncrypting: boolean;
   password: string;
-  limit: number;
   notesTotalCount: number;
-  tags: Set<string>;
-  keyword: string;
+  filterData: FilterData;
   toastManager: ToastManager;
   modalStore?: ModalStore;
 };
@@ -175,6 +174,7 @@ export type Context = {
 export type Input = {
   client: TriplitClient;
   toastManager: ToastManager;
+  filterData: FilterData;
 };
 
 export const machine = setup({
@@ -197,11 +197,14 @@ export const machine = setup({
       | { type: "TagAdd"; tag: string }
       | { type: "TagDelete"; tag: string }
       | { type: "SetKeyword"; value: string }
+      | { type: "SetTagsInclude"; value: string[] }
+      | { type: "SetFilterData"; value: FilterData }
       | { type: "Yes" }
       | { type: "No" }
       | { type: "Reload" }
       | { type: "ModalOpenNoteNew" }
       | { type: "ModalOpenNote"; note: NoteDisplay }
+      | { type: "ModalOpenFilter" }
       | { type: "ModalClosed" }
       | { type: "Check" }
       | { type: "Cancel" }
@@ -220,7 +223,6 @@ export const machine = setup({
       | { type: "SearchTagAdd"; tag: string }
       | { type: "SearchTagRemove"; tag: string }
       | { type: "SearchKeywordSet"; keyword: string }
-      | { type: "LimitSet"; limit: number }
       | { type: "ModalOpenEncryption"; note: NoteDisplay }
       | { type: "ModalOpenSettings" }
       | { type: "ModalConfirmDeletion" }
@@ -229,7 +231,6 @@ export const machine = setup({
     input: {} as Input,
   },
   guards: {
-    IsNotesEmpty: ({ context }) => context.notes.length === 0,
     IsWrongPassword: (_, params: { error: Error }) =>
       params.error.message === "Decrypt failed",
     IsWrongFormat: (_, params: { error: Error }) =>
@@ -247,12 +248,9 @@ export const machine = setup({
   context: ({ input }) => ({
     notes: [],
     note: createEmptyNoteDisplay(),
-    noteEncrypting: false,
     password: "",
     notesTotalCount: 0,
-    limit: 10,
-    tags: new Set(),
-    keyword: "",
+    filterData: input.filterData,
     toastManager: input.toastManager,
     modalStore: undefined,
     client: input.client,
@@ -272,7 +270,10 @@ export const machine = setup({
     },
     SetLimit: {
       actions: assign({
-        limit: ({ event }) => event.value,
+        filterData: ({event, context}) => ({
+          ...context.filterData,
+          limit: event.value,
+        }),
       }),
     },
   },
@@ -291,75 +292,6 @@ export const machine = setup({
           },
         },
       },
-    },
-    DataLoading: {
-      type: "parallel",
-      states: {
-        Records: {
-          initial: "Loading",
-          states: {
-            Loading: {
-              invoke: {
-                src: logicNotesRead,
-                input: ({ context }) => ({
-                  client: context.client,
-                  limit: context.limit,
-                  keyword: context.keyword,
-                  tags: context.tags,
-                }),
-                onDone: {
-                  target: "Loaded",
-                  actions: assign({
-                    notes: ({ event }) => event.output as NoteDisplay[],
-                  }),
-                },
-                onError: {
-                  target: "#App.DataError",
-                  actions: ({ context, event }) => {
-                    context.toastManager.error("Error happened fetching data");
-                    console.error(event.error);
-                  },
-                },
-              },
-            },
-            Loaded: {
-              type: "final",
-            },
-          },
-        },
-        Count: {
-          initial: "Loading",
-          states: {
-            Loading: {
-              invoke: {
-                src: logicNotesCount,
-                input: ({ context }) => ({
-                  client: context.client,
-                  keyword: context.keyword,
-                  tags: context.tags,
-                }),
-                onDone: {
-                  target: "Loaded",
-                  actions: assign({
-                    notesTotalCount: ({ event }) => event.output as number,
-                  }),
-                },
-                onError: {
-                  target: "#App.DataError",
-                  actions: ({ context, event }) => {
-                    context.toastManager.error("Error happened fetching data");
-                    console.error(event.error);
-                  },
-                },
-              },
-            },
-            Loaded: {
-              type: "final",
-            },
-          },
-        },
-      },
-      onDone: "Idling",
     },
     DataUpserting: {
       invoke: {
@@ -412,9 +344,7 @@ export const machine = setup({
         onDone: {
           target: "Idling",
           actions: assign({
-            note: ({ event }) => {
-              return event.output as NoteDisplay;
-            },
+            note: ({event}) => event.output as NoteDisplay,
           }),
         },
         onError: [
@@ -522,7 +452,9 @@ export const machine = setup({
             },
             ModalOpenSettings: {
               target: "#App.Idling.Modal.Settings",
-              actions: assign({}),
+            },
+            ModalOpenFilter: {
+              target: "#App.Idling.Modal.Filter",
             },
             Reload: {
               target: "#App.Idling",
@@ -553,28 +485,47 @@ export const machine = setup({
             },
             TagAdd: {
               actions: assign({
-                tags: ({context, event}) => {
-                  context.tags.add(event.tag);
-                  return new Set(context.tags);
+                filterData: ({ context, event }) => {
+                  context.filterData.tagsInclude.add(event.tag);
+                  return {
+                    ...context.filterData,
+                    tagsInclude: new Set(context.filterData.tagsInclude),
+                  };
                 },
               }),
               target: "#App.Idling",
             },
             TagDelete: {
               actions: assign({
-                tags: ({context, event}) => {
-                  context.tags.delete(event.tag);
-                  return new Set(...context.tags);
+                filterData: ({ context, event }) => {
+                  context.filterData.tagsInclude.delete(event.tag);
+                  return {
+                    ...context.filterData,
+                    tagsInclude: new Set(context.filterData.tagsInclude),
+                  };
                 },
               }),
               target: "#App.Idling",
             },
             SetKeyword: {
               actions: assign({
-                keyword: ({event}) => event.value,
+                filterData: ({ event, context }) => {
+                  return {
+                    ...context.filterData,
+                    keyword: event.value,
+                  };
+                },
               }),
               target: "#App.Idling",
-            }
+            },
+            SetFilterData: {
+              actions: assign({
+                filterData: ({ event }) => {
+                  return event.value;
+                },
+              }),
+              target: "#App.Idling",
+            },
           },
         },
         Modal: {
@@ -591,7 +542,6 @@ export const machine = setup({
                 Save: {
                   actions: assign({
                     note: ({ event }) => event.note,
-                    noteEncrypting: () => false,
                   }),
                   target: "#App.DataUpserting",
                 },
@@ -683,6 +633,14 @@ export const machine = setup({
                 }),
               },
             },
+            Filter: {
+              invoke: {
+                src: logicModalFilter,
+                input: ({ context }) => ({
+                  modalStore: context.modalStore,
+                }),
+              },
+            },
           },
         },
         SubscribingNotes: {
@@ -693,9 +651,7 @@ export const machine = setup({
                 src: logicNotesSubscribe,
                 input: ({ context }) => ({
                   client: context.client,
-                  limit: context.limit,
-                  keyword: context.keyword,
-                  tags: context.tags,
+                  filterData: context.filterData,
                 }),
               },
             },
@@ -704,16 +660,28 @@ export const machine = setup({
                 src: logicNotesCountSubscribe,
                 input: ({ context }) => ({
                   client: context.client,
-                  keyword: context.keyword,
-                  tags: context.tags,
+                  filterData: context.filterData,
                 }),
               },
-            }
+            },
           },
           on: {
             SetNotes: {
               actions: assign({
-                notes: ({ event }) => event.value,
+                notes: ({ context, event }) => {
+                  const loadedNotes = event.value;
+                  for (const loadedNote of loadedNotes) {
+                    if (
+                      loadedNote.id === context.note.id &&
+                      loadedNote.encryptionState === "encrypted" &&
+                      context.note.encryptionState === "decrypted"
+                    ) {
+                      loadedNote.text = context.note.text;
+                      loadedNote.encryptionState = "decrypted";
+                    }
+                  }
+                  return loadedNotes;
+                },
               }),
             },
             SetNotesTotalCount: {

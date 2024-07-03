@@ -11,7 +11,14 @@ import {
   getModalStore,
 } from "@skeletonlabs/skeleton";
 import { Fa } from "svelte-fa";
-import { faSearch } from "@fortawesome/free-solid-svg-icons";
+import {
+  faAnchor,
+  faEye, faFilter,
+  faGear,
+  faSearch,
+  faSort,
+  faSortAlphaAsc,
+} from "@fortawesome/free-solid-svg-icons";
 import {
   computePosition,
   autoUpdate,
@@ -25,7 +32,6 @@ import { useSelector } from "@xstate/svelte";
 import { noteCount, notesRead } from "../../data/queries-triplit";
 import { derived } from "svelte/store";
 import { createToastManagerSkeleton } from "$lib/toast-manager";
-import { createModalManagerSkeleton } from "$lib/modal-manager";
 
 // Floating UI for Popups
 initializeStores();
@@ -37,21 +43,27 @@ const globalToastManager = createToastManagerSkeleton(globalToastStore);
 globalAppActor.send({ type: "SetToastManager", value: globalToastManager });
 globalAppActor.send({ type: "SetModalStore", value: globalModalStore });
 
+const snapshot = useSelector(globalAppActor, (snapshot) => snapshot);
 const tagsArray = useSelector(globalAppActor, (snapshot) =>
-  Array.from(snapshot.context.tags),
+  Array.from(snapshot.context.filterData.tagsInclude),
 );
 
 function deleteTag(tag: string) {
   globalAppActor.send({ type: "TagDelete", tag });
 }
 
-function setKeyword(keyword: string) {
-}
+function setKeyword(keyword: string) {}
 
 function handleKeywordChange(e: Event) {
   const keyword = (e.target as HTMLInputElement).value;
   globalAppActor.send({ type: "SetKeyword", value: keyword });
 }
+
+function openFilter() {
+  globalAppActor.send({ type: "ModalOpenFilter" });
+}
+
+let searchHover = false;
 </script>
 
 <Toast/>
@@ -64,34 +76,48 @@ function handleKeywordChange(e: Event) {
       <svelte:fragment slot="lead">
         <strong class="hidden md:block text-xl uppercase">Cryptaa</strong>
       </svelte:fragment>
-      <div
-        class="input-group input-group-divider"
-        class:grid-cols-[auto_1fr]={$tagsArray.length === 0}
-        class:grid-cols-[auto_1fr_auto]={$tagsArray.length > 0}
-      >
-        <div class="input-group-shim">
-          <Fa icon={faSearch} />
-        </div>
-        <input
-          type="text"
-          placeholder="Search..."
-          on:change={handleKeywordChange}
-        />
+      <div class="flex gap-2">
         <div
-          class="flex gap-1"
+          class="input-group input-group-divider grid-cols-[auto_1fr_auto]"
         >
-          {#each $tagsArray as tag}
-            <button
-              class="chip variant-ghost-secondary"
-              on:click={() => deleteTag(tag)}
-            >
-              {tag}
-            </button>
-          {/each}
+          <div
+            class="input-group-shim w-12"
+            role="button"
+            tabindex="-1"
+          >
+            <Fa icon={faSearch} />
+          </div>
+          <input
+            type="text"
+            placeholder="Search..."
+            on:change={handleKeywordChange}
+            value={$snapshot.context.filterData.keyword}
+          />
+          <div
+            class="flex gap-1"
+            class:invisible={$tagsArray.length === 0}
+          >
+            {#each $tagsArray as tag}
+              <button
+                class="chip variant-ghost-secondary"
+                on:click={() => deleteTag(tag)}
+              >
+                <span>{tag}</span>
+                <span>✕</span>
+              </button>
+            {/each}
+          </div>
         </div>
+        <button
+          class="btn-icon btn-icon-lg variant-soft-secondary"
+          on:click={openFilter}
+        >
+          <Fa icon={faFilter} />
+        </button>
       </div>
+
       <svelte:fragment slot="trail">
-        <strong class="text-xl uppercase invisible">Crypta</strong>
+        <strong class="text-xl uppercase invisible">Cryptaa</strong>
       </svelte:fragment>
     </AppBar>
   </svelte:fragment>

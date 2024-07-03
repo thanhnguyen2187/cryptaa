@@ -27,7 +27,7 @@ function handleKeyDown(e: KeyboardEvent) {
   >
     <Fa icon={faClose} />
   </button>
-  <section class="p-4 flex flex-col gap-2">
+  <section class="p-4 flex flex-col gap-4">
     <label class="label">
       <span>Title</span>
       <input

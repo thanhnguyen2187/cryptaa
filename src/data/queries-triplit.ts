@@ -2,6 +2,8 @@ import type { TriplitClient } from "@triplit/client";
 import { or } from "@triplit/db";
 import type { Note, NoteDisplay } from "./schema-triplit";
 import { noteDbToDisplay } from './data-transformation';
+import type { FilterData } from '$lib/filter';
+import { filter } from '@skeletonlabs/skeleton';
 
 export async function notesRead(
   // biome-ignore lint/suspicious/noExplicitAny: <explanation>
@@ -33,23 +35,52 @@ export async function notesRead(
 export function notesSubscribe(
   // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   client: TriplitClient<any>,
-  limit: number,
-  keyword: string,
-  tags: Set<string>,
+  filterData: FilterData,
   fnHandleSuccess: (results: Map<string, Note>) => void,
   fnHandleError: (error: unknown) => void,
 ): () => void {
-  let query = client.query("notes").order("createdAt", "DESC").limit(limit);
-  if (keyword !== "") {
+  let query = client.query("notes").limit(filterData.limit);
+  if (filterData.keyword !== "") {
     query = query.where(
       or([
-        ["title", "like", `%${keyword}%`],
-        ["text", "like", `%${keyword}%`],
+        ["title", "like", `%${filterData.keyword}%`],
+        ["text", "like", `%${filterData.keyword}%`],
       ]),
     );
   }
-  for (const tag of tags) {
+  for (const tag of filterData.tagsInclude) {
     query = query.where("tags", "has", tag);
+  }
+  for (const tag of filterData.tagsExclude) {
+    query = query.where("tags", "!has", tag);
+  }
+  switch (filterData.sortBy) {
+    case "title-a-z":
+      query = query.order("title", "ASC");
+      break;
+    case "title-z-a":
+      query = query.order("title", "DESC");
+      break;
+    case "date-created-earliest-latest":
+      query = query.order("createdAt", "ASC");
+      break;
+    case "date-created-latest-earliest":
+      query = query.order("createdAt", "DESC");
+      break;
+    case "date-updated-earliest-latest":
+      query = query.order("updatedAt", "ASC");
+      break;
+    case "date-updated-latest-earliest":
+      query = query.order("updatedAt", "DESC");
+      break;
+    default: {
+      const exhaustiveCheck: never = filterData.sortBy;
+      console.error({
+        handler: "notesSubscribe",
+        sortBy: filterData.sortBy,
+        message: "unhandled case",
+      });
+    }
   }
   const fnUnsubscribe = client.subscribe(
     query.build(),
