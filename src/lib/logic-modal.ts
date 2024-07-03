@@ -5,7 +5,8 @@ import ModalNote from "../components/ModalNote.svelte";
 import ModalEncryption from "../components/ModalEncryption.svelte";
 import type { TriplitClient } from "@triplit/client";
 import ModalSettings from "../components/ModalSettings.svelte";
-import ModalFilter from "../components/ModalFilter.svelte";
+import type { ComponentType } from 'svelte';
+import ModalFilter from '../components/ModalFilter.svelte';
 
 export const logicModalNote = fromCallback<
   EventObject,
@@ -141,7 +142,12 @@ export const logicModalFilter = fromCallback<
     type: "component",
     component: {
       ref: ModalFilter,
-      props: {},
+      props: {
+        fnClose: () => {
+          input.modalStore?.close();
+          sendBack({ type: "ModalClosed" });
+        }
+      },
     },
     response: () => {
       sendBack({ type: "ModalClosed" });

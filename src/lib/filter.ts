@@ -7,6 +7,7 @@ export type FilterSortOption =
   | "date-updated-latest-earliest";
 
 export type FilterData = {
+  limit: number;
   keyword: string;
   tagsInclude: Set<string>;
   tagsExclude: Set<string>;
@@ -18,7 +19,7 @@ export const filterDataKey = "cryptaa.filterData";
 export function readFilterData(): FilterData {
   const filterDataRaw = JSON.parse(
     localStorage.getItem(filterDataKey) ??
-      `{"keyword": "", "tagsInclude": [], "tagsExclude": [], "sortBy": "date-created-earliest-latest"}`,
+      `{"limit": 10, "keyword": "", "tagsInclude": [], "tagsExclude": [], "sortBy": "date-created-earliest-latest"}`,
   );
   const filterData: FilterData = {
     ...filterDataRaw,

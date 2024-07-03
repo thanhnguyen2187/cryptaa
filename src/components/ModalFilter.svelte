@@ -1,37 +1,44 @@
 <script lang="ts">
-import {
-  InputChip,
-  ProgressRadial,
-  Tab,
-  TabGroup,
-} from "@skeletonlabs/skeleton";
-import Fa from "svelte-fa";
-import {
-  faCancel,
-  faCheck,
-  faClose,
-  faEllipsis,
-} from "@fortawesome/free-solid-svg-icons";
+import { InputChip } from "@skeletonlabs/skeleton";
 import { useSelector } from "@xstate/svelte";
-import { onDestroy } from "svelte";
-import { globalAppActor, globalClient } from "$lib/global";
-import { derived } from "svelte/store";
+import { globalAppActor } from "$lib/global";
+import { derived, get } from "svelte/store";
+import type { FilterData } from "$lib/filter";
+
+export let fnClose: () => void = () => {};
 
 const snapshot = useSelector(globalAppActor, (state) => state);
-const tagsInclude = useSelector(globalAppActor, (state) => state.context.filterData.tagsInclude);
-const tagsIncludeArray = Array.from($tagsInclude.keys());
 
-function handleKeywordChange(e: Event) {
-  const keyword = (e.target as HTMLInputElement).value;
-  globalAppActor.send({ type: "SetKeyword", value: keyword });
-}
+const tagsIncludeSet = get(
+  derived(snapshot, (snapshot) => snapshot.context.filterData.tagsInclude),
+);
+const tagsIncludeArray: string[] = Array.from(tagsIncludeSet);
 
-function handleTagAdd(tag: string) {
-  globalAppActor.send({ type: "TagAdd", tag });
-}
+let keyword: string = get(
+  derived(snapshot, (snapshot) => snapshot.context.filterData.keyword),
+);
 
-function handleTagDelete(tag: string) {
-  globalAppActor.send({ type: "TagDelete", tag });
+const tagsExcludeSet = get(
+  derived(snapshot, (snapshot) => snapshot.context.filterData.tagsExclude),
+);
+const tagsExcludeArray: string[] = Array.from(tagsExcludeSet);
+
+function save() {
+  const limit = get(
+    derived(snapshot, (snapshot) => snapshot.context.filterData.limit),
+  );
+  const filterData: FilterData = {
+    limit,
+    keyword,
+    tagsInclude: new Set(tagsIncludeArray),
+    tagsExclude: new Set(tagsExcludeArray),
+    sortBy: "title-a-z",
+  };
+  globalAppActor.send({
+    type: "SetFilterData",
+    value: filterData,
+  });
+  fnClose();
 }
 </script>
 
@@ -42,8 +49,7 @@ function handleTagDelete(tag: string) {
       <input
         class="input"
         spellcheck="false"
-        value={$snapshot.context.filterData.keyword}
-        on:change={handleKeywordChange}
+        bind:value={keyword}
       />
     </label>
     <label>
@@ -52,13 +58,15 @@ function handleTagDelete(tag: string) {
         name="tags"
         value={tagsIncludeArray}
         chips="variant-ghost-secondary"
-        on:add={(e) => handleTagAdd(e.detail.chipValue)}
-        on:remove={(e) => handleTagDelete(e.detail.chipValue)}
       />
     </label>
     <label>
       <span>Exclude tags</span>
-      <InputChip name="tags"/>
+      <InputChip
+        name="tags"
+        value={tagsExcludeArray}
+        chips="variant-ghost-secondary"
+      />
     </label>
     <label>
       <span>Sort by</span>
@@ -75,6 +83,7 @@ function handleTagDelete(tag: string) {
   <footer class="card-footer flex flex-row-reverse gap-2">
     <button
       class="btn variant-filled"
+      on:click={save}
     >
       Save
     </button>

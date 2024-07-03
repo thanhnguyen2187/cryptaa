@@ -127,13 +127,11 @@ export const logicNotesDelete = fromPromise(
 
 export const logicNotesSubscribe = fromCallback<
   EventObject,
-  { client: TriplitClient; limit: number; keyword: string; tags: Set<string> }
+  { client: TriplitClient; filterData: FilterData }
 >(({ sendBack, input }) => {
   const fnUnsubscribe = notesSubscribe(
     input.client,
-    input.limit,
-    input.keyword,
-    input.tags,
+    input.filterData,
     (results) => {
       const noteDbs = Array.from(results.values());
       const noteDisplays = noteDbs.map(noteDbToDisplay);
@@ -146,12 +144,12 @@ export const logicNotesSubscribe = fromCallback<
 
 export const logicNotesCountSubscribe = fromCallback<
   EventObject,
-  { client: TriplitClient; limit: number; keyword: string; tags: Set<string> }
+  { client: TriplitClient; filterData: FilterData }
 >(({ sendBack, input }) => {
   const fnUnsubscribe = notesCountSubscribe(
     input.client,
-    input.keyword,
-    input.tags,
+    input.filterData.keyword,
+    input.filterData.tagsInclude,
     (count) => {
       sendBack({ type: "SetNotesTotalCount", value: count });
     },
@@ -167,7 +165,6 @@ export type Context = {
   notes: NoteDisplay[];
   note: NoteDisplay;
   password: string;
-  limit: number;
   notesTotalCount: number;
   filterData: FilterData;
   toastManager: ToastManager;
@@ -200,6 +197,8 @@ export const machine = setup({
       | { type: "TagAdd"; tag: string }
       | { type: "TagDelete"; tag: string }
       | { type: "SetKeyword"; value: string }
+      | { type: "SetTagsInclude"; value: string[] }
+      | { type: "SetFilterData"; value: FilterData }
       | { type: "Yes" }
       | { type: "No" }
       | { type: "Reload" }
@@ -224,7 +223,6 @@ export const machine = setup({
       | { type: "SearchTagAdd"; tag: string }
       | { type: "SearchTagRemove"; tag: string }
       | { type: "SearchKeywordSet"; keyword: string }
-      | { type: "LimitSet"; limit: number }
       | { type: "ModalOpenEncryption"; note: NoteDisplay }
       | { type: "ModalOpenSettings" }
       | { type: "ModalConfirmDeletion" }
@@ -252,7 +250,6 @@ export const machine = setup({
     note: createEmptyNoteDisplay(),
     password: "",
     notesTotalCount: 0,
-    limit: 10,
     filterData: input.filterData,
     toastManager: input.toastManager,
     modalStore: undefined,
@@ -273,7 +270,10 @@ export const machine = setup({
     },
     SetLimit: {
       actions: assign({
-        limit: ({ event }) => event.value,
+        filterData: ({event, context}) => ({
+          ...context.filterData,
+          limit: event.value,
+        }),
       }),
     },
   },
@@ -292,75 +292,6 @@ export const machine = setup({
           },
         },
       },
-    },
-    DataLoading: {
-      type: "parallel",
-      states: {
-        Records: {
-          initial: "Loading",
-          states: {
-            Loading: {
-              invoke: {
-                src: logicNotesRead,
-                input: ({ context }) => ({
-                  client: context.client,
-                  limit: context.limit,
-                  keyword: context.filterData.keyword,
-                  tags: context.filterData.tagsInclude,
-                }),
-                onDone: {
-                  target: "Loaded",
-                  actions: assign({
-                    notes: ({ event }) => event.output as NoteDisplay[],
-                  }),
-                },
-                onError: {
-                  target: "#App.DataError",
-                  actions: ({ context, event }) => {
-                    context.toastManager.error("Error happened fetching data");
-                    console.error(event.error);
-                  },
-                },
-              },
-            },
-            Loaded: {
-              type: "final",
-            },
-          },
-        },
-        Count: {
-          initial: "Loading",
-          states: {
-            Loading: {
-              invoke: {
-                src: logicNotesCount,
-                input: ({ context }) => ({
-                  client: context.client,
-                  keyword: context.filterData.keyword,
-                  tags: context.filterData.tagsInclude,
-                }),
-                onDone: {
-                  target: "Loaded",
-                  actions: assign({
-                    notesTotalCount: ({ event }) => event.output as number,
-                  }),
-                },
-                onError: {
-                  target: "#App.DataError",
-                  actions: ({ context, event }) => {
-                    context.toastManager.error("Error happened fetching data");
-                    console.error(event.error);
-                  },
-                },
-              },
-            },
-            Loaded: {
-              type: "final",
-            },
-          },
-        },
-      },
-      onDone: "Idling",
     },
     DataUpserting: {
       invoke: {
@@ -587,6 +518,14 @@ export const machine = setup({
               }),
               target: "#App.Idling",
             },
+            SetFilterData: {
+              actions: assign({
+                filterData: ({ event }) => {
+                  return event.value;
+                },
+              }),
+              target: "#App.Idling",
+            },
           },
         },
         Modal: {
@@ -712,9 +651,7 @@ export const machine = setup({
                 src: logicNotesSubscribe,
                 input: ({ context }) => ({
                   client: context.client,
-                  limit: context.limit,
-                  keyword: context.filterData.keyword,
-                  tags: context.filterData.tagsInclude,
+                  filterData: context.filterData,
                 }),
               },
             },
@@ -723,8 +660,7 @@ export const machine = setup({
                 src: logicNotesCountSubscribe,
                 input: ({ context }) => ({
                   client: context.client,
-                  keyword: context.filterData.keyword,
-                  tags: context.filterData.tagsInclude,
+                  filterData: context.filterData,
                 }),
               },
             },

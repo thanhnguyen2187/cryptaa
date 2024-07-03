@@ -18,14 +18,14 @@ function reload() {
 }
 
 function loadMore() {
-  const limit = globalAppActor.getSnapshot().context.limit;
+  const limit = globalAppActor.getSnapshot().context.filterData.limit;
   globalAppActor.send({ type: "SetLimit", value: limit + 10 });
   globalAppActor.send({ type: "Reload" });
 }
 
 const showAddMore = useSelector(
   globalAppActor,
-  (state) => state.context.limit < state.context.notesTotalCount,
+  (state) => state.context.filterData.limit < state.context.notesTotalCount,
 );
 </script>
 
