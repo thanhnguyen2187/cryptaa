@@ -3,25 +3,33 @@ import { InputChip } from "@skeletonlabs/skeleton";
 import { useSelector } from "@xstate/svelte";
 import { globalAppActor } from "$lib/global";
 import { derived, get } from "svelte/store";
-import type { FilterData } from "$lib/filter";
+import {
+  type FilterData,
+  type FilterSortOption,
+  writeFilterData,
+} from "$lib/filter";
 
 export let fnClose: () => void = () => {};
 
 const snapshot = useSelector(globalAppActor, (state) => state);
+
+let keyword: string = get(
+  derived(snapshot, (snapshot) => snapshot.context.filterData.keyword),
+);
 
 const tagsIncludeSet = get(
   derived(snapshot, (snapshot) => snapshot.context.filterData.tagsInclude),
 );
 const tagsIncludeArray: string[] = Array.from(tagsIncludeSet);
 
-let keyword: string = get(
-  derived(snapshot, (snapshot) => snapshot.context.filterData.keyword),
-);
-
 const tagsExcludeSet = get(
   derived(snapshot, (snapshot) => snapshot.context.filterData.tagsExclude),
 );
 const tagsExcludeArray: string[] = Array.from(tagsExcludeSet);
+
+let sortBy: FilterSortOption = get(
+  derived(snapshot, (snapshot) => snapshot.context.filterData.sortBy),
+);
 
 function save() {
   const limit = get(
@@ -32,13 +40,14 @@ function save() {
     keyword,
     tagsInclude: new Set(tagsIncludeArray),
     tagsExclude: new Set(tagsExcludeArray),
-    sortBy: "title-a-z",
+    sortBy,
   };
   globalAppActor.send({
     type: "SetFilterData",
     value: filterData,
   });
   fnClose();
+  writeFilterData(filterData);
 }
 </script>
 
@@ -70,13 +79,13 @@ function save() {
     </label>
     <label>
       <span>Sort by</span>
-      <select class="select">
-        <option>Title A to Z</option>
-        <option>Title Z to A</option>
-        <option>Creation date earliest to latest</option>
-        <option>Creation date latest to earliest</option>
-        <option>Updating date earliest to latest</option>
-        <option>Updating date latest to earliest</option>
+      <select class="select" bind:value={sortBy}>
+        <option value="title-a-z">Title A to Z</option>
+        <option value="title-z-a">Title Z to A</option>
+        <option value="date-created-earliest-latest">Creation date earliest to latest</option>
+        <option value="date-created-latest-earliest">Creation date latest to earliest</option>
+        <option value="date-updated-earliest-latest">Updating date earliest to latest</option>
+        <option value="date-updated-latest-earliest">Updating date latest to earliest</option>
       </select>
     </label>
   </section>
